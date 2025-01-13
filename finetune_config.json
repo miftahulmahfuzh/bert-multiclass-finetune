@@ -1,0 +1,25 @@
+{
+    "model": {
+        "name": "bert-base-multilingual-uncased",
+        "num_labels": 20
+    },
+    "training": {
+        "max_length": 512,
+        "batch_size": 16,
+        "epochs": 1,
+        "warmup_steps": 0,
+        "learning_rate": 2e-5,
+        "beta_1": 0.9,
+        "beta_2": 0.999,
+        "eps": 1e-8,
+        "weight_decay": 0.01,
+        "amsgrad": false
+    },
+    "wandb": {
+        "project": "news-classification-bert"
+    },
+    "paths": {
+        "data_dir": "financial_news_data",
+        "use_cache": true
+    }
+}
