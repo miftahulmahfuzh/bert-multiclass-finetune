@@ -1,0 +1,27 @@
+{
+   "model": {
+      "name": "bert-base-multilingual-uncased",
+      "num_labels": 20
+   },
+   "training": {
+      "max_length": 256,
+      "batch_size": 32,
+      "epochs": 10,
+      "warmup_steps": 0,
+      "learning_rate": 2e-05,
+      "beta_1": 0.9,
+      "beta_2": 0.999,
+      "eps": 1e-08,
+      "weight_decay": 0.01,
+      "amsgrad": false
+   },
+   "wandb": {
+      "project": "news-classification-bert",
+      "url": "https://wandb.ai/mahfuzh-personal/news-classification-bert/runs/ih2kciq0"
+   },
+   "paths": {
+      "data_dir": "financial_news_data",
+      "use_cache": true,
+      "output_dir": "bert-base-multilingual-uncased_20250114_082422"
+   }
+}

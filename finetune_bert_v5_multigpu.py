@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import torch
 import wandb
 import json
@@ -14,6 +14,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
 from sklearn.metrics import accuracy_score, classification_report
 from transformers import (
+    AutoConfig,
     AutoModelForSequenceClassification,
     AutoTokenizer,
     get_linear_schedule_with_warmup,
@@ -41,6 +42,30 @@ def cleanup_distributed():
     """Clean up distributed training."""
     dist.destroy_process_group()
 
+def get_duration_df(start_time, best_epoch):
+    # Record end time and calculate duration
+    start_time_str = start_time.strftime("%Y-%m-%d_%H:%M:%S")
+    end_time = datetime.now()
+    end_time_str = end_time.strftime("%Y-%m-%d_%H:%M:%S")
+    duration = end_time - start_time
+
+    # Calculate duration components
+    total_seconds = int(duration.total_seconds())
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+
+    # Create duration DataFrame
+    duration_df = pd.DataFrame({
+        'start': [start_time_str],
+        'end': [end_time_str],
+        'duration_hour': [hours],
+        'duration_minute': [minutes],
+        'duration_second': [seconds],
+        'best_epoch': [best_epoch]
+    })
+    return duration_df, hours, minutes, seconds
+
 def add_timestamp(caption):
     """Append a timestamp to the given caption."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -54,6 +79,18 @@ def load_config(config_path="finetune_config.json"):
     # Add timestamp to output directory
     outd = add_timestamp(config["model"]["name"])
     config["paths"]["output_dir"] = outd
+
+    # Load label mappings
+    labels_path = f"{config['paths']['data_dir']}/labels.json"
+    with open(labels_path, 'r') as f:
+        id2label = json.load(f)
+        # Create label2id mapping
+        label2id = {v: int(k) for k, v in id2label.items()}
+
+    # Add label mappings to config
+    config["model"]["id2label"] = id2label
+    config["model"]["label2id"] = label2id
+
     return config
 
 def get_cache_path(split_name, config):
@@ -296,8 +333,9 @@ def train(rank, world_size, CONFIG):
 
     # Record start time
     start_time = datetime.now()
-    start_time_str = start_time.strftime("%Y-%m-%d_%H:%M:%S")
 
+    id2label = CONFIG["model"].pop("id2label")
+    label2id = CONFIG["model"].pop("label2id")
     if rank == 0:
         # Initialize wandb only on the main process
         wandb.init(
@@ -307,6 +345,7 @@ def train(rank, world_size, CONFIG):
         )
         CONFIG["wandb"]["url"] = wandb.run.url
         os.makedirs(CONFIG["paths"]["output_dir"], exist_ok=True)
+
 
         config_save_path = os.path.join(CONFIG["paths"]["output_dir"], "finetune_config.json")
         with open(config_save_path, 'w') as f:
@@ -320,9 +359,15 @@ def train(rank, world_size, CONFIG):
     train_dataloader, val_dataloader, test_dataloader, tokenizer = load_and_prepare_data(rank, world_size, CONFIG)
 
     # Initialize model
+    model_config = AutoConfig.from_pretrained(
+        CONFIG["model"]["name"],
+        num_labels=CONFIG["model"]["num_labels"],
+        id2label=id2label,
+        label2id=label2id
+    )
     model = AutoModelForSequenceClassification.from_pretrained(
         CONFIG["model"]["name"],
-        num_labels=CONFIG["model"]["num_labels"]
+        config=model_config
     ).to(device)
 
     # Wrap model with DDP
@@ -349,6 +394,7 @@ def train(rank, world_size, CONFIG):
     best_accuracy = 0
     best_report_df = None
     best_model = None
+    best_epoch = 0
     for epoch in range(CONFIG["training"]["epochs"]):
         if rank == 0:
             print(f"\nEpoch {epoch + 1}/{CONFIG['training']['epochs']}")
@@ -360,6 +406,7 @@ def train(rank, world_size, CONFIG):
         train_loss = train_epoch(model, train_dataloader, optimizer, scheduler, device)
         val_loss, accuracy, report_df = evaluate(model, val_dataloader, device)
 
+        best_model = model
         if rank == 0:
             wandb.log({
                 "epoch": epoch + 1,
@@ -376,12 +423,13 @@ def train(rank, world_size, CONFIG):
             if accuracy > best_accuracy:
                 best_accuracy = accuracy
                 best_report_df = report_df
-                best_model = model
+                best_epoch = epoch + 1
                 print(f"New best accuracy: {best_accuracy:.4f} - Saving model...")
 
                 model.module.save_pretrained(CONFIG["paths"]["output_dir"])
                 tokenizer.save_pretrained(CONFIG["paths"]["output_dir"])
 
+                # we dont use this currently to shorten the training duration
                 # torch.save({
                 #     'epoch': epoch,
                 #     'model_state_dict': model.state_dict(),
@@ -390,47 +438,33 @@ def train(rank, world_size, CONFIG):
                 #     'best_accuracy': best_accuracy,
                 # }, os.path.join(CONFIG["paths"]["output_dir"], 'training_state.pt'))
 
-                # best_excel_path = os.path.join(CONFIG["paths"]["output_dir"], 'best_checkpoint_classification_report.xlsx')
-                # report_df.to_excel(best_excel_path, sheet_name="best_validation_report")
+                # best_excel_path = os.path.join(CONFIG["paths"]["output_dir"], 'classification_reports.xlsx')
+                # best_report_df.to_excel(best_excel_path, sheet_name="best_validation_report")
+                duration_df, hours, minutes, seconds = get_duration_df(start_time, best_epoch)
+                excel_path = os.path.join(CONFIG["paths"]["output_dir"], 'classification_reports.xlsx')
+                with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+                    best_report_df.to_excel(writer, sheet_name='best_validation_report')
+                    duration_df.to_excel(writer, sheet_name='duration', index=False)
 
     # Final test evaluation
+    # if rank == 0:
+    print("\nLoading the best model from the output directory for testing...")
+    # best_model = AutoModelForSequenceClassification.from_pretrained(
+    #     CONFIG["paths"]["output_dir"],
+    #     num_labels=CONFIG["model"]["num_labels"]
+    # ).to(device)
+    # best_model = DDP(best_model, device_ids=[rank])
+
+    test_loss, test_accuracy, test_report_df = evaluate(best_model, test_dataloader, device)
+    print("\nTest Classification Report:")
+    print(test_report_df)
+
     if rank == 0:
-        print("\nLoading the best model from the output directory for testing...")
-        # best_model = AutoModelForSequenceClassification.from_pretrained(
-        #     CONFIG["paths"]["output_dir"],
-        #     num_labels=CONFIG["model"]["num_labels"]
-        # ).to(device)
-        # best_model = DDP(best_model, device_ids=[rank])
-
-        test_loss, test_accuracy, test_report_df = evaluate(best_model, test_dataloader, device)
-        print("\nTest Classification Report:")
-        print(test_report_df)
-
-        # Record end time and calculate duration
-        end_time = datetime.now()
-        end_time_str = end_time.strftime("%Y-%m-%d_%H:%M:%S")
-        duration = end_time - start_time
-
-        # Calculate duration components
-        total_seconds = int(duration.total_seconds())
-        hours = total_seconds // 3600
-        minutes = (total_seconds % 3600) // 60
-        seconds = total_seconds % 60
-
-        # Create duration DataFrame
-        duration_df = pd.DataFrame({
-            'start': [start_time_str],
-            'end': [end_time_str],
-            'duration_hour': [hours],
-            'duration_minute': [minutes],
-            'duration_second': [seconds]
-        })
-
         # Save all reports to a single Excel file
-        excel_path = os.path.join(config["paths"]["output_dir"], 'classification_reports.xlsx')
-
+        duration_df, hours, minutes, seconds = get_duration_df(start_time, best_epoch)
+        excel_path = os.path.join(CONFIG["paths"]["output_dir"], 'classification_reports.xlsx')
         with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-            best_report_df.to_excel(writer, sheet_name='validation_report')
+            best_report_df.to_excel(writer, sheet_name='best_validation_report')
             test_report_df.to_excel(writer, sheet_name='test_report')
             duration_df.to_excel(writer, sheet_name='duration', index=False)
 
@@ -441,6 +475,7 @@ def train(rank, world_size, CONFIG):
         # test_report_df.to_excel(test_excel_path, sheet_name="test_report")
 
         wandb.log({
+            "best_epoch": best_epoch,
             "test_loss": test_loss,
             "test_accuracy": test_accuracy,
             "test_classification_report": test_report_df,
@@ -449,13 +484,14 @@ def train(rank, world_size, CONFIG):
             "training_duration_seconds": seconds
         })
 
-    # cleanup_distributed()
-    # gc.collect()
-    # torch.cuda.empty_cache()
+    cleanup_distributed()
+    gc.collect()
+    torch.cuda.empty_cache()
 
 def main():
     increase_fd_limit()
     # Load configuration
+    global CONFIG
     CONFIG = load_config()
 
     # Get the number of available GPUs
