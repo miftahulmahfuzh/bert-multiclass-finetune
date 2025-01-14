@@ -1,5 +1,5 @@
 import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import torch
 import wandb
 import json
@@ -269,14 +269,14 @@ def train_epoch(model, dataloader, optimizer, scheduler, device):
 
     return avg_loss.item()
 
-def evaluate(model, dataloader, device, labels=None, target_names=None):
+def evaluate(model, dataloader, device, labels=None, target_names=None, is_test=False):
     model.eval()
     total_loss = 0
     all_preds = []
     all_labels = []
-
+    desc = "Testing" if is_test else "Evaluating"
     with torch.no_grad():
-        for batch in tqdm(dataloader, desc="Evaluating", disable=dist.get_rank() != 0):
+        for batch in tqdm(dataloader, desc=desc, disable=dist.get_rank() != 0):
             batch = {k: v.to(device) for k, v in batch.items()}
 
             outputs = model(**batch)
@@ -410,7 +410,7 @@ def train(rank, world_size, CONFIG):
     best_epoch = 0
     for epoch in range(CONFIG["training"]["epochs"]):
         if rank == 0:
-            print(f"\nEpoch {epoch + 1}/{CONFIG['training']['epochs']}")
+            print(f"\nStarting Epoch {epoch + 1}/{CONFIG['training']['epochs']}")
 
         # Set the epoch for the samplers
         train_dataloader.sampler.set_epoch(epoch)
@@ -448,7 +448,7 @@ def train(rank, world_size, CONFIG):
                 model.module.save_pretrained(CONFIG["paths"]["output_dir"])
                 tokenizer.save_pretrained(CONFIG["paths"]["output_dir"])
 
-                # we dont use this currently to shorten the training duration
+                # We dont use this currently to reduce harddisk usage
                 # torch.save({
                 #     'epoch': epoch,
                 #     'model_state_dict': model.state_dict(),
@@ -457,19 +457,24 @@ def train(rank, world_size, CONFIG):
                 #     'best_accuracy': best_accuracy,
                 # }, os.path.join(CONFIG["paths"]["output_dir"], 'training_state.pt'))
 
+                # Save evaluation for every best checkpoint in case the training crashed midrun
                 duration_df, hours, minutes, seconds = get_duration_df(start_time, best_epoch)
                 excel_path = os.path.join(CONFIG["paths"]["output_dir"], 'classification_reports.xlsx')
                 with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
                     best_report_df.to_excel(writer, sheet_name='best_validation_report')
                     duration_df.to_excel(writer, sheet_name='duration', index=False)
 
-    # Final test evaluation
+    # Evaluate on test data
+    if rank == 0:
+        print("\nEvaluate best model on test data")
+
     test_loss, test_accuracy, test_report_df = evaluate(
         best_model,
         test_dataloader,
         device,
         labels=labels_sorted, # Pass label IDs
-        target_names=target_names # Pass label names
+        target_names=target_names, # Pass label names
+        is_test=True
     )
 
     if rank == 0:

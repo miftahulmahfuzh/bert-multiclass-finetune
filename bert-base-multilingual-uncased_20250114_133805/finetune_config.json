@@ -6,7 +6,7 @@
    "training": {
       "max_length": 512,
       "batch_size": 32,
-      "epochs": 1,
+      "epochs": 10,
       "warmup_steps": 0,
       "learning_rate": 2e-05,
       "beta_1": 0.9,
@@ -17,11 +17,11 @@
    },
    "wandb": {
       "project": "news-classification-bert",
-      "url": "https://wandb.ai/mahfuzh-personal/news-classification-bert/runs/x26k31qe"
+      "url": "https://wandb.ai/mahfuzh-personal/news-classification-bert/runs/mq77cim7"
    },
    "paths": {
       "data_dir": "financial_news_data",
       "use_cache": true,
-      "output_dir": "bert-base-multilingual-uncased_20250114_092946"
+      "output_dir": "bert-base-multilingual-uncased_20250114_133805"
    }
 }
