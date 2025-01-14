@@ -1,5 +1,4 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import torch
 import wandb
 import json
@@ -30,12 +29,12 @@ def increase_fd_limit():
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
     new_soft = min(hard, 65535)  # Increase soft limit up to hard limit or 65535
     resource.setrlimit(resource.RLIMIT_NOFILE, (new_soft, hard))
-    print(f"File descriptor limits - Soft: {new_soft}, Hard: {hard}")
+    # print(f"File descriptor limits - Soft: {new_soft}, Hard: {hard}")
 
-def setup_distributed(rank, world_size):
+def setup_distributed(rank, world_size, CONFIG):
     """Initialize distributed training."""
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
+    os.environ['MASTER_ADDR'] = CONFIG["nccl"]["host"]
+    os.environ['MASTER_PORT'] = CONFIG["nccl"]["port"]
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
 def cleanup_distributed():
@@ -79,6 +78,8 @@ def load_config(config_path="finetune_config.json"):
     # Add timestamp to output directory
     outd = add_timestamp(config["model"]["name"])
     config["paths"]["output_dir"] = outd
+
+    print(json.dumps(config, indent=3))
 
     # Load label mappings
     labels_path = f"{config['paths']['data_dir']}/labels.json"
@@ -335,7 +336,7 @@ def evaluate(model, dataloader, device, labels=None, target_names=None, is_test=
     return avg_loss.item(), accuracy, report_df
 
 def train(rank, world_size, CONFIG):
-    setup_distributed(rank, world_size)
+    setup_distributed(rank, world_size, CONFIG)
 
     # Record start time
     start_time = datetime.now()
@@ -345,7 +346,7 @@ def train(rank, world_size, CONFIG):
     id2label = dict(sorted(id2label.items(), key=lambda x: int(x[0])))
 
     # Prepare label information for classification_report
-    num_labels = CONFIG["model"]["num_labels"]
+    num_labels = len(id2label)
     labels_sorted = list(range(num_labels))  # Assuming labels are 0 to num_labels-1
     target_names = [id2label[str(i)] for i in labels_sorted]  # Convert IDs to label names
 
@@ -365,8 +366,9 @@ def train(rank, world_size, CONFIG):
             json.dump(CONFIG, f, indent=3)
         print(f"Configuration saved to {config_save_path}")
 
-    # Set device
-    device = torch.device(f"cuda:{rank}")
+    # Assign the device based on the provided GPU ID for this rank
+    gpu_ids = CONFIG["training"]["gpu_ids"]
+    device = torch.device(f"cuda:{gpu_ids[rank]}")
 
     # Load data
     train_dataloader, val_dataloader, test_dataloader, tokenizer = load_and_prepare_data(rank, world_size, CONFIG)
@@ -374,7 +376,7 @@ def train(rank, world_size, CONFIG):
     # Initialize model
     model_config = AutoConfig.from_pretrained(
         CONFIG["model"]["name"],
-        num_labels=CONFIG["model"]["num_labels"],
+        num_labels=num_labels,
         id2label=id2label,
         label2id=label2id
     )
@@ -384,7 +386,7 @@ def train(rank, world_size, CONFIG):
     ).to(device)
 
     # Wrap model with DDP
-    model = DDP(model, device_ids=[rank])
+    model = DDP(model, device_ids=[gpu_ids[rank]])
 
     # Initialize optimizer and scheduler
     b1 = CONFIG["training"]["beta_1"]
@@ -448,14 +450,14 @@ def train(rank, world_size, CONFIG):
                 model.module.save_pretrained(CONFIG["paths"]["output_dir"])
                 tokenizer.save_pretrained(CONFIG["paths"]["output_dir"])
 
-                # We dont use this currently to reduce harddisk usage
-                # torch.save({
-                #     'epoch': epoch,
-                #     'model_state_dict': model.state_dict(),
-                #     'optimizer_state_dict': optimizer.state_dict(),
-                #     'scheduler_state_dict': scheduler.state_dict(),
-                #     'best_accuracy': best_accuracy,
-                # }, os.path.join(CONFIG["paths"]["output_dir"], 'training_state.pt'))
+                if CONFIG["training"]["save_training_state"]:
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                        'scheduler_state_dict': scheduler.state_dict(),
+                        'best_accuracy': best_accuracy,
+                    }, os.path.join(CONFIG["paths"]["output_dir"], 'training_state.pt'))
 
                 # Save evaluation for every best checkpoint in case the training crashed midrun
                 duration_df, hours, minutes, seconds = get_duration_df(start_time, best_epoch)
@@ -512,14 +514,25 @@ def main():
     global CONFIG
     CONFIG = load_config()
 
-    # Get the number of available GPUs
-    world_size = torch.cuda.device_count()
+    # Get the list of GPU IDs from the configuration
+    gpu_ids = CONFIG["training"]["gpu_ids"]
+    if not isinstance(gpu_ids, list):
+        gpu_ids = [gpu_ids]
+        CONFIG["training"]["gpu_ids"] = gpu_ids
+
+    # Validate GPU IDs
+    available_gpus = torch.cuda.device_count()
+    for gid in gpu_ids:
+        if gid >= available_gpus:
+            raise ValueError(f"GPU id {gid} is not available. Available GPUs: {available_gpus}")
+
+    world_size = len(gpu_ids)
     if world_size > 1:
-        print(f"Starting distributed training on {world_size} GPUs...")
+        print(f"Starting distributed training on GPUs: {gpu_ids}")
         mp.spawn(train, args=(world_size, CONFIG), nprocs=world_size, join=True)
     else:
-        print("Multi-GPU training requires at least 2 GPUs. Running on single GPU...")
-        train(0, 1, CONFIG)
+        print(f"Running on GPU: {gpu_ids[0]}")
+        train(0, world_size, CONFIG)
 
 if __name__ == "__main__":
     main()
