@@ -4,9 +4,9 @@
         "num_labels": 20
     },
     "training": {
-        "max_length": 512,
-        "batch_size": 16,
-        "epochs": 1,
+        "max_length": 256,
+        "batch_size": 32,
+        "epochs": 10,
         "warmup_steps": 0,
         "learning_rate": 2e-5,
         "beta_1": 0.9,

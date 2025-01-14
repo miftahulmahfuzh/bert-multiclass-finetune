@@ -2,3 +2,4 @@
 *.pkl
 *.safetensors
 *.pt
+financial_news_data/

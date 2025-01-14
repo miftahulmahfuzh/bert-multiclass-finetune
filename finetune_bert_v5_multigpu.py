@@ -1,5 +1,5 @@
 import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import torch
 import wandb
 import json
@@ -53,7 +53,6 @@ def load_config(config_path="finetune_config.json"):
 
     # Add timestamp to output directory
     outd = add_timestamp(config["model"]["name"])
-    config["wandb"]["run_name"] = outd
     config["paths"]["output_dir"] = outd
     return config
 
@@ -303,7 +302,7 @@ def train(rank, world_size, CONFIG):
         # Initialize wandb only on the main process
         wandb.init(
             project=CONFIG["wandb"]["project"],
-            name=CONFIG["wandb"]["run_name"],
+            name=CONFIG["paths"]["output_dir"],
             config=CONFIG
         )
         CONFIG["wandb"]["url"] = wandb.run.url
@@ -349,6 +348,7 @@ def train(rank, world_size, CONFIG):
 
     best_accuracy = 0
     best_report_df = None
+    best_model = None
     for epoch in range(CONFIG["training"]["epochs"]):
         if rank == 0:
             print(f"\nEpoch {epoch + 1}/{CONFIG['training']['epochs']}")
@@ -376,6 +376,7 @@ def train(rank, world_size, CONFIG):
             if accuracy > best_accuracy:
                 best_accuracy = accuracy
                 best_report_df = report_df
+                best_model = model
                 print(f"New best accuracy: {best_accuracy:.4f} - Saving model...")
 
                 model.module.save_pretrained(CONFIG["paths"]["output_dir"])
@@ -395,10 +396,10 @@ def train(rank, world_size, CONFIG):
     # Final test evaluation
     if rank == 0:
         print("\nLoading the best model from the output directory for testing...")
-        best_model = AutoModelForSequenceClassification.from_pretrained(
-            CONFIG["paths"]["output_dir"],
-            num_labels=CONFIG["model"]["num_labels"]
-        ).to(device)
+        # best_model = AutoModelForSequenceClassification.from_pretrained(
+        #     CONFIG["paths"]["output_dir"],
+        #     num_labels=CONFIG["model"]["num_labels"]
+        # ).to(device)
         # best_model = DDP(best_model, device_ids=[rank])
 
         test_loss, test_accuracy, test_report_df = evaluate(best_model, test_dataloader, device)
@@ -448,9 +449,9 @@ def train(rank, world_size, CONFIG):
             "training_duration_seconds": seconds
         })
 
-    cleanup_distributed()
-    gc.collect()
-    torch.cuda.empty_cache()
+    # cleanup_distributed()
+    # gc.collect()
+    # torch.cuda.empty_cache()
 
 def main():
     increase_fd_limit()
