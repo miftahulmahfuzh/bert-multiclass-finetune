@@ -190,6 +190,6 @@ def main(finetuned_path: str, test_data_path: str):
     save_evaluation_results(report_df, duration_info, output_file)
 
 if __name__ == "__main__":
-    finetuned_path = "/home/devmiftahul/nlp/bert_dev/bert-base-multilingual-uncased_20250114_120521"
+    finetuned_path = "/home/devmiftahul/nlp/bert_dev/bert-base-multilingual-uncased_20250114_121451"
     test_data_path = "/home/devmiftahul/nlp/bert_dev/financial_news_data/test.csv"
     main(finetuned_path, test_data_path)

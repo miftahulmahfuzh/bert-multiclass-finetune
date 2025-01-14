@@ -269,7 +269,7 @@ def train_epoch(model, dataloader, optimizer, scheduler, device):
 
     return avg_loss.item()
 
-def evaluate(model, dataloader, device):
+def evaluate(model, dataloader, device, labels=None, target_names=None):
     model.eval()
     total_loss = 0
     all_preds = []
@@ -307,7 +307,13 @@ def evaluate(model, dataloader, device):
         all_labels = torch.cat(gathered_labels).cpu().numpy()
 
         accuracy = accuracy_score(all_labels, all_preds)
-        report_dict = classification_report(all_labels, all_preds, output_dict=True)
+        report_dict = classification_report(
+            all_labels,
+            all_preds,
+            labels=labels, # Specify the label IDs
+            target_names=target_names, # Specify the label names
+            output_dict=True
+        )
         report_df = pd.DataFrame(report_dict).transpose()
 
         if 'accuracy' not in report_df.index:
@@ -334,8 +340,15 @@ def train(rank, world_size, CONFIG):
     # Record start time
     start_time = datetime.now()
 
-    id2label = CONFIG["model"].pop("id2label")
     label2id = CONFIG["model"].pop("label2id")
+    id2label = CONFIG["model"].pop("id2label")
+    id2label = dict(sorted(id2label.items(), key=lambda x: int(x[0])))
+
+    # Prepare label information for classification_report
+    num_labels = CONFIG["model"]["num_labels"]
+    labels_sorted = list(range(num_labels))  # Assuming labels are 0 to num_labels-1
+    target_names = [id2label[str(i)] for i in labels_sorted]  # Convert IDs to label names
+
     if rank == 0:
         # Initialize wandb only on the main process
         wandb.init(
@@ -404,7 +417,13 @@ def train(rank, world_size, CONFIG):
         val_dataloader.sampler.set_epoch(epoch)
 
         train_loss = train_epoch(model, train_dataloader, optimizer, scheduler, device)
-        val_loss, accuracy, report_df = evaluate(model, val_dataloader, device)
+        val_loss, accuracy, report_df = evaluate(
+            model,
+            val_dataloader,
+            device,
+            labels=labels_sorted, # Pass label IDs
+            target_names=target_names # Pass label names
+        )
 
         best_model = model
         if rank == 0:
@@ -438,8 +457,6 @@ def train(rank, world_size, CONFIG):
                 #     'best_accuracy': best_accuracy,
                 # }, os.path.join(CONFIG["paths"]["output_dir"], 'training_state.pt'))
 
-                # best_excel_path = os.path.join(CONFIG["paths"]["output_dir"], 'classification_reports.xlsx')
-                # best_report_df.to_excel(best_excel_path, sheet_name="best_validation_report")
                 duration_df, hours, minutes, seconds = get_duration_df(start_time, best_epoch)
                 excel_path = os.path.join(CONFIG["paths"]["output_dir"], 'classification_reports.xlsx')
                 with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
@@ -447,19 +464,18 @@ def train(rank, world_size, CONFIG):
                     duration_df.to_excel(writer, sheet_name='duration', index=False)
 
     # Final test evaluation
-    # if rank == 0:
-    print("\nLoading the best model from the output directory for testing...")
-    # best_model = AutoModelForSequenceClassification.from_pretrained(
-    #     CONFIG["paths"]["output_dir"],
-    #     num_labels=CONFIG["model"]["num_labels"]
-    # ).to(device)
-    # best_model = DDP(best_model, device_ids=[rank])
-
-    test_loss, test_accuracy, test_report_df = evaluate(best_model, test_dataloader, device)
-    print("\nTest Classification Report:")
-    print(test_report_df)
+    test_loss, test_accuracy, test_report_df = evaluate(
+        best_model,
+        test_dataloader,
+        device,
+        labels=labels_sorted, # Pass label IDs
+        target_names=target_names # Pass label names
+    )
 
     if rank == 0:
+        print("\nTest Classification Report:")
+        print(test_report_df)
+
         # Save all reports to a single Excel file
         duration_df, hours, minutes, seconds = get_duration_df(start_time, best_epoch)
         excel_path = os.path.join(CONFIG["paths"]["output_dir"], 'classification_reports.xlsx')
@@ -470,9 +486,6 @@ def train(rank, world_size, CONFIG):
 
         print(f"\nAll reports saved to {excel_path}")
         print(f"Training duration - {hours}h {minutes}m {seconds}s")
-
-        # test_excel_path = os.path.join(CONFIG["paths"]["output_dir"], 'test_classification_report.xlsx')
-        # test_report_df.to_excel(test_excel_path, sheet_name="test_report")
 
         wandb.log({
             "best_epoch": best_epoch,
