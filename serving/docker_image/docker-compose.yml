@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  api:
+    image: doc-cls:0.1.0
+    container_name: news_classification_api
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_PATH=/app/model_onnx
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      - /home/devmiftahul/nlp/bert_dev/indobenchmark/indobert-base-p2_20250114_171614:/app/model_onnx:ro
+    restart: unless-stopped

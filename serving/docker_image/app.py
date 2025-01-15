@@ -23,8 +23,7 @@ classifier = None
 @app.on_event("startup")
 async def load_model():
     global classifier
-    # model_path = os.getenv("MODEL_PATH", "model_onnx")
-    model_path = "/home/devmiftahul/nlp/bert_dev/indobenchmark/indobert-base-p2_20250114_171614"
+    model_path = os.getenv("MODEL_PATH", "model_onnx")
     try:
         print(f"Loading ONNX model from {model_path}...")
         classifier = pipeline(
