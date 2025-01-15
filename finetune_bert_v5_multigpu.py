@@ -343,7 +343,6 @@ def train(rank, world_size, CONFIG):
 
     label2id = CONFIG["model"].pop("label2id")
     id2label = CONFIG["model"].pop("id2label")
-    id2label = dict(sorted(id2label.items(), key=lambda x: int(x[0])))
 
     # Prepare label information for classification_report
     num_labels = len(id2label)
