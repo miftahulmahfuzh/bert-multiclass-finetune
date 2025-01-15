@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from transformers import pipeline
+from transformers import pipeline, AutoTokenizer
 from optimum.onnxruntime import ORTModelForSequenceClassification
 from typing import List
 import uvicorn
@@ -24,11 +24,14 @@ classifier = None
 async def load_model():
     global classifier
     model_path = os.getenv("MODEL_PATH", "model_onnx")
+    model = ORTModelForSequenceClassification.from_pretrained(model_path)
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
     try:
         print(f"Loading ONNX model from {model_path}...")
         classifier = pipeline(
             task="text-classification",
-            model=model_path,
+            model=model,
+            tokenizer=tokenizer,
             device="cpu"
         )
         print("Model loaded successfully!")

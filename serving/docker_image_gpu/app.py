@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from transformers import pipeline, AutoTokenizer
+from transformers import pipeline
+# from transformers import AutoTokenizer
 from optimum.onnxruntime import ORTModelForSequenceClassification
 from typing import List
 import uvicorn
@@ -12,9 +13,9 @@ class PredictionInput(BaseModel):
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="News Classification API",
-    description="API for classifying news articles using ONNX model",
-    version="1.0.0"
+    title="Text Classification API (GPU)",
+    description="API for classifying text using Transformers model with GPU support",
+    version="0.1.0"
 )
 
 # Global variable for the pipeline
@@ -23,17 +24,17 @@ classifier = None
 @app.on_event("startup")
 async def load_model():
     global classifier
-    # model_path = os.getenv("MODEL_PATH", "model_onnx")
-    model_path = "/home/devmiftahul/nlp/bert_dev/indobenchmark/indobert-base-p2_20250114_171614"
-    model = ORTModelForSequenceClassification.from_pretrained(model_path)
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    model_path = os.getenv("MODEL_PATH", "model_onnx")
+    # right now, using ORTModel using gpu resulted in error
+    # model = ORTModelForSequenceClassification.from_pretrained(model_path)
+    # tokenizer = AutoTokenizer.from_pretrained(model_path)
     try:
         print(f"Loading ONNX model from {model_path}...")
         classifier = pipeline(
             task="text-classification",
-            model=model,
-            tokenizer=tokenizer,
-            device="cpu"
+            model=model_path,
+            # tokenizer=tokenizer,
+            device=0  # Use GPU
         )
         print("Model loaded successfully!")
     except Exception as e:

@@ -24,10 +24,10 @@ def convert_to_onnx(
         input_dir,
         local_files_only=True
     )
-    tokenizer = AutoTokenizer.from_pretrained(
-        input_dir,
-        local_files_only=True
-    )
+    # tokenizer = AutoTokenizer.from_pretrained(
+    #     input_dir,
+    #     local_files_only=True
+    # )
 
     # Convert to ONNX using Optimum
     print("Converting model to ONNX format...")
@@ -54,7 +54,7 @@ def convert_to_onnx(
     print(f'classifier = pipeline("text-classification", model="{output_dir}", device="cpu")')
 
 if __name__ == "__main__":
-    d = "/home/devmiftahul/nlp/bert_dev/indobenchmark/indobert-base-p2_20250114_171614"
+    d = "/home/devmiftahul/nlp/bert_dev/indobenchmark/indobert-large-p2_20250115_091442"
     convert_to_onnx(
         input_dir=d,
         output_dir=d
