@@ -1,0 +1,14 @@
+services:
+  api:
+    image: t5:0.1.0
+    container_name: news_classification_api
+    ports:
+      - "8000:8000"
+    environment:
+      - CUDA_VISIBLE_DEVICES=1
+      - MODEL_PATH=/app/model_onnx
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      - /home/devmiftahul/nlp/t5_dev/google/mt5-base_20250116_114500:/app/model_onnx:ro
+    restart: unless-stopped
