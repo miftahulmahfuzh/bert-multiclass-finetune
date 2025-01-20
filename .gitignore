@@ -3,4 +3,6 @@
 *.safetensors
 *.pt
 financial_news_data/
+financial_news_data_v2/
+financial_news_data_v2_no_pad/
 __pycache__/
