@@ -23,6 +23,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 import resource
 import gc
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 # Increase system file descriptor limit
 def increase_fd_limit():
@@ -399,25 +400,37 @@ def train(rank, world_size, CONFIG):
         amsgrad=CONFIG["training"]["amsgrad"]
     )
     total_steps = len(train_dataloader) * CONFIG["training"]["epochs"]
-    scheduler = get_linear_schedule_with_warmup(
+    warmup_scheduler = get_linear_schedule_with_warmup(
         optimizer,
         num_warmup_steps=CONFIG["training"]["warmup_steps"],
         num_training_steps=total_steps
+    )
+    lr_scheduler = ReduceLROnPlateau(
+        optimizer,
+        mode='max',  # Since we're monitoring validation accuracy
+        factor=CONFIG["training"].get("lr_decay_factor", 0.1),  # Reduce LR by this factor
+        patience=CONFIG["training"].get("lr_patience", 3),  # Number of epochs with no improvement after which LR will be reduced
+        verbose=True if rank == 0 else False,
+        min_lr=CONFIG["training"].get("min_lr", 1e-6)  # Minimum LR
     )
 
     best_accuracy = 0
     best_report_df = None
     best_model = None
     best_epoch = 0
+    patience_counter = 0
+    max_patience = CONFIG["training"].get("early_stopping_patience", 10)  # Early stopping patience
     for epoch in range(CONFIG["training"]["epochs"]):
         if rank == 0:
             print(f"\nStarting Epoch {epoch + 1}/{CONFIG['training']['epochs']}")
+            current_lr = optimizer.param_groups[0]['lr']
+            print(f"Current learning rate: {current_lr}")
 
         # Set the epoch for the samplers
         train_dataloader.sampler.set_epoch(epoch)
         val_dataloader.sampler.set_epoch(epoch)
 
-        train_loss = train_epoch(model, train_dataloader, optimizer, scheduler, device)
+        train_loss = train_epoch(model, train_dataloader, optimizer, warmup_scheduler, device)
         val_loss, accuracy, report_df = evaluate(
             model,
             val_dataloader,
@@ -426,26 +439,20 @@ def train(rank, world_size, CONFIG):
             target_names=target_names # Pass label names
         )
 
-        best_model = model
+        # Update learning rate based on validation accuracy
         if rank == 0:
-            wandb.log({
-                "epoch": epoch + 1,
-                "train_loss": train_loss,
-                "val_loss": val_loss,
-                "accuracy": accuracy
-            })
+            lr_scheduler.step(accuracy)
 
-            print(f"Train Loss: {train_loss:.4f}")
-            print(f"Validation Loss: {val_loss:.4f}")
-            print("\nClassification Report:")
-            print(report_df)
+        # Early stopping check
+        if accuracy > best_accuracy:
+            best_accuracy = accuracy
+            best_report_df = report_df
+            best_model = model
+            best_epoch = epoch + 1
+            patience_counter = 0
 
-            if accuracy > best_accuracy:
-                best_accuracy = accuracy
-                best_report_df = report_df
-                best_epoch = epoch + 1
+            if rank == 0:
                 print(f"New best accuracy: {best_accuracy:.4f} - Saving model...")
-
                 model.module.save_pretrained(CONFIG["paths"]["output_dir"])
                 tokenizer.save_pretrained(CONFIG["paths"]["output_dir"])
 
@@ -454,7 +461,8 @@ def train(rank, world_size, CONFIG):
                         'epoch': epoch,
                         'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict(),
-                        'scheduler_state_dict': scheduler.state_dict(),
+                        'scheduler_state_dict': warmup_scheduler.state_dict(),
+                        'lr_scheduler_state_dict': lr_scheduler.state_dict(),
                         'best_accuracy': best_accuracy,
                     }, os.path.join(CONFIG["paths"]["output_dir"], 'training_state.pt'))
 
@@ -464,6 +472,67 @@ def train(rank, world_size, CONFIG):
                 with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
                     best_report_df.to_excel(writer, sheet_name='best_validation_report')
                     duration_df.to_excel(writer, sheet_name='duration', index=False)
+
+        else:
+            patience_counter += 1
+            if patience_counter >= max_patience:
+                if rank == 0:
+                    print(f"\nEarly stopping triggered after {patience_counter} epochs without improvement")
+                break
+
+        if rank == 0:
+            wandb.log({
+                "epoch": epoch + 1,
+                "train_loss": train_loss,
+                "val_loss": val_loss,
+                "accuracy": accuracy,
+                "learning_rate": optimizer.param_groups[0]['lr']
+            })
+
+            print(f"Train Loss: {train_loss:.4f}")
+            print(f"Validation Loss: {val_loss:.4f}")
+            print(f"Validation Accuracy: {accuracy:.4f}")
+            print("\nClassification Report:")
+            print(report_df)
+
+        # best_model = model
+        # if rank == 0:
+        #     wandb.log({
+        #         "epoch": epoch + 1,
+        #         "train_loss": train_loss,
+        #         "val_loss": val_loss,
+        #         "accuracy": accuracy
+        #     })
+
+        #     print(f"Train Loss: {train_loss:.4f}")
+        #     print(f"Validation Loss: {val_loss:.4f}")
+        #     print("\nClassification Report:")
+        #     print(report_df)
+
+        #     if accuracy > best_accuracy:
+        #         best_accuracy = accuracy
+        #         best_report_df = report_df
+        #         best_epoch = epoch + 1
+        #         print(f"New best accuracy: {best_accuracy:.4f} - Saving model...")
+
+        #         model.module.save_pretrained(CONFIG["paths"]["output_dir"])
+        #         tokenizer.save_pretrained(CONFIG["paths"]["output_dir"])
+
+        #         if CONFIG["training"]["save_training_state"]:
+        #             torch.save({
+        #                 'epoch': epoch,
+        #                 'model_state_dict': model.state_dict(),
+        #                 'optimizer_state_dict': optimizer.state_dict(),
+        #                 'scheduler_state_dict': scheduler.state_dict(),
+        #                 'best_accuracy': best_accuracy,
+        #             }, os.path.join(CONFIG["paths"]["output_dir"], 'training_state.pt'))
+
+        #         # Save evaluation for every best checkpoint in case the training crashed midrun
+        #         duration_df, hours, minutes, seconds = get_duration_df(start_time, best_epoch)
+        #         excel_path = os.path.join(CONFIG["paths"]["output_dir"], 'classification_reports.xlsx')
+        #         with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+        #             best_report_df.to_excel(writer, sheet_name='best_validation_report')
+        #             duration_df.to_excel(writer, sheet_name='duration', index=False)
 
     # Evaluate on test data
     if rank == 0:
