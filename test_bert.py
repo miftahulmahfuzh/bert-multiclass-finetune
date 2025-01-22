@@ -86,12 +86,15 @@ def load_test_data(test_data_path, tokenizer, max_length, batch_size):
 
     return test_dataloader, test_df
 
-def evaluate(model, dataloader, device):
+def evaluate(model, dataloader, device, test_df):
     """Perform inference and evaluate the model on the test data."""
     all_preds = []
     all_labels = []
     total_loss = 0
     criterion = torch.nn.CrossEntropyLoss()
+
+    # Get label mapping from model config
+    id2label = model.config.id2label
 
     with torch.no_grad():
         for batch in tqdm(dataloader, desc="Testing"):
@@ -111,7 +114,11 @@ def evaluate(model, dataloader, device):
 
     avg_loss = total_loss / len(dataloader)
     accuracy = accuracy_score(all_labels, all_preds)
-    report_dict = classification_report(all_labels, all_preds, output_dict=True)
+
+    # Convert numeric labels to text labels for classification report
+    all_labels_text = [id2label[label] for label in all_labels]
+    all_preds_text = [id2label[pred] for pred in all_preds]
+    report_dict = classification_report(all_labels_text, all_preds_text, output_dict=True)
     report_df = pd.DataFrame(report_dict).transpose()
 
     if 'accuracy' not in report_df.index:
@@ -122,10 +129,20 @@ def evaluate(model, dataloader, device):
         report_df.at['accuracy', 'f1-score'] = accuracy
         report_df.at['accuracy', 'support'] = len(all_labels)
 
-    return avg_loss, accuracy, report_df
+    # Create predictions DataFrame with text labels
+    predictions_df = pd.DataFrame({
+        'text': test_df['text'],
+        'true_label_id': all_labels,
+        'predicted_label_id': all_preds,
+        'true_label': [id2label[label] for label in all_labels],
+        'predicted_label': [id2label[pred] for pred in all_preds],
+        'correct': np.array(all_labels) == np.array(all_preds)
+    })
 
-def save_evaluation_results(report_df, duration, output_file):
-    """Save the evaluation report and duration to an Excel file."""
+    return avg_loss, accuracy, report_df, predictions_df
+
+def save_evaluation_results(report_df, predictions_df, duration, output_file):
+    """Save the evaluation report, predictions, and duration to an Excel file."""
     # Create a duration DataFrame
     duration_df = pd.DataFrame({
         'start_time': [duration['start_time']],
@@ -137,18 +154,17 @@ def save_evaluation_results(report_df, duration, output_file):
     with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
         report_df.to_excel(writer, sheet_name='test_report')
         duration_df.to_excel(writer, sheet_name='duration', index=False)
+        predictions_df.to_excel(writer, sheet_name='test_predictions', index=False)
 
     print(f"Evaluation results saved to {output_file}")
 
 def main(finetuned_path: str, test_data_path: str):
     # Configuration
-    config_path = f"{finetuned_path}/finetune_config.json"  # Replace with your config file path if different
+    config_path = f"{finetuned_path}/finetune_config.json"
     CONFIG = load_config(config_path)
 
     # Extract paths and parameters from config
     model_path = finetuned_path
-    # test_data_path = CONFIG["paths"]["test_data_path"]
-    # output_file = CONFIG["paths"].get("output_file", "test_result.xlsx")
     output_file = f"{finetuned_path}/test_result.xlsx"
     max_length = CONFIG["training"].get("max_length", 512)
     batch_size = CONFIG["training"].get("batch_size", 32)
@@ -168,7 +184,7 @@ def main(finetuned_path: str, test_data_path: str):
     # Perform evaluation
     print("Evaluating the model on test data...")
     start_time = datetime.now()
-    avg_loss, accuracy, report_df = evaluate(model, test_dataloader, device)
+    avg_loss, accuracy, report_df, predictions_df = evaluate(model, test_dataloader, device, test_df)
     end_time = datetime.now()
     duration = end_time - start_time
 
@@ -183,13 +199,13 @@ def main(finetuned_path: str, test_data_path: str):
         'start_time': start_time.strftime("%Y-%m-%d %H:%M:%S"),
         'end_time': end_time.strftime("%Y-%m-%d %H:%M:%S"),
         'duration': str(duration),
-        'best_epoch': CONFIG["training"].get("best_epoch", 'N/A')  # Placeholder if not applicable
+        'best_epoch': CONFIG["training"].get("best_epoch", 'N/A')
     }
 
     # Save evaluation results
-    save_evaluation_results(report_df, duration_info, output_file)
+    save_evaluation_results(report_df, predictions_df, duration_info, output_file)
 
 if __name__ == "__main__":
-    finetuned_path = "/home/devmiftahul/nlp/bert_dev/bert-base-multilingual-uncased_20250114_121451"
+    finetuned_path = "/home/devmiftahul/nlp/bert_dev/indobenchmark/indobert-large-p2_20250115_091442"
     test_data_path = "/home/devmiftahul/nlp/bert_dev/financial_news_data/test.csv"
     main(finetuned_path, test_data_path)
