@@ -1,0 +1,6 @@
+FROM /home/devmiftahul/nlp/llm_dev/v3/google/gemma-2-2b-it_20250122_175509/gemma-2-2b-it.gguf
+PARAMETER temperature 0.1
+PARAMETER num_ctx 2048
+TEMPLATE """Instruction: Categorize the news text
+Input: {{.Prompt}}
+Response:"""
