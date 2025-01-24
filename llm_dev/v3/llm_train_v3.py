@@ -1,9 +1,10 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import torch
 import json
 import pickle
 import hashlib
+import wandb
 import pandas as pd
 from datetime import datetime
 from tqdm.auto import tqdm
@@ -153,6 +154,13 @@ def main():
     # Load configuration
     config = load_config()
 
+    # Initialize wandb
+    wandb.init(
+        project=config.get("wandb", {}).get("project", "instruction-tuning"),
+        name=config["paths"]["output_dir"],
+        config=config
+    )
+
     # Increase file descriptor limit
     increase_fd_limit()
 
@@ -223,6 +231,18 @@ def main():
     # Prepare dataloaders with caching
     train_dataloader, val_dataloader = prepare_dataloaders(dataset_dict, tokenizer, config)
 
+    # Custom trainer with logging
+    class WandbTrainer(Trainer):
+        def log(self, logs, *args, **kwargs):
+            """
+            Override the log method to send metrics to wandb
+            """
+            if self.state.global_step % self.state.logging_steps == 0:
+                # Filter out non-numeric and irrelevant logs
+                logs = {k: v for k, v in logs.items() if isinstance(v, (int, float)) and k not in ['epoch', 'total_flos']}
+                wandb.log(logs)
+            super().log(logs, *args, **kwargs)
+
     # Training arguments
     training_args = TrainingArguments(
         output_dir=config["paths"]["output_dir"],
@@ -240,11 +260,11 @@ def main():
         greater_is_better=False,
         fp16=True,
         save_total_limit=config["training"]["save_total_limit"],
-        report_to=config["training"]["report_to"],
+        report_to=["wandb"],  # Add wandb to report_to
     )
 
     # Initialize trainer
-    trainer = Trainer(
+    trainer = WandbTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataloader.dataset,
@@ -263,6 +283,10 @@ def main():
     print("Starting training...")
     trainer.train()
     trainer.save_model(os.path.join(config["paths"]["output_dir"], "best-checkpoint"))
+
+    # Finish wandb run
+    wandb.finish()
+
     print("Training completed successfully.")
 
 if __name__ == "__main__":
