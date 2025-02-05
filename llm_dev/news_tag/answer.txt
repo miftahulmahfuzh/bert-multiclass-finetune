@@ -1,0 +1,15 @@
+<think>
+Alright, I'm looking at the user's query where they want me to structure a news article into specific HTML tags. The example given is about PT Adi Sarana Armada Tbk (ASSA). 
+
+First, I need to identify if there are any stock mentions. The article clearly states "PT Adi Sarana Armada Tbk (ASSA)" which indicates the stock code ASSA should be included in the <stock> tag.
+
+Next, determining the industry. Since the company is involved in logistics and transportation, the appropriate industry tag would be "Industri Transportasi."
+
+Lastly, for the market, since the article mentions Jakarta and discusses an Indonesian company, it's safe to default to "Indonesian Market" as per the guidelines.
+
+I should make sure each tag is correctly formatted without any extra text or explanations. Just the relevant information within the appropriate tags.
+</think>
+
+<stock>ASSA</stock>
+<industry>Industri Transportasi</industry>
+<market>Indonesian Market</market>
