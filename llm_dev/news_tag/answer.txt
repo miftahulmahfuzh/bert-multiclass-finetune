@@ -1,15 +1,31 @@
 <think>
-Alright, I'm looking at the user's query where they want me to structure a news article into specific HTML tags. The example given is about PT Adi Sarana Armada Tbk (ASSA). 
+Okay, so I've got this query where the user wants me to process a news article and extract specific information into HTML tags. The example given is in Indonesian, which might mean that the articles they're dealing with are also in that language. Let me break down what needs to be done.
 
-First, I need to identify if there are any stock mentions. The article clearly states "PT Adi Sarana Armada Tbk (ASSA)" which indicates the stock code ASSA should be included in the <stock> tag.
+First, the structure of the output: there are three possible tags—stock, industry, and market. Each has its own criteria. I need to look through the article for mentions of companies with stock codes, identify the relevant industry, and determine if it pertains to a specific market, defaulting to Indonesian Market if nothing else is specified.
 
-Next, determining the industry. Since the company is involved in logistics and transportation, the appropriate industry tag would be "Industri Transportasi."
+Looking at the example provided: "Taboola Signs memasuki kesepakatan eksklusif baru selama lima tahun dengan Grey Television". The output should include <stock>TBLA</stock> because Taboola's stock code is TBLA. The industry here is probably media or advertising since it's about a partnership with a TV company, so I'd use "Industri Media" or maybe "Industri Periklanan." The market tag defaults to Indonesian Market unless stated otherwise.
 
-Lastly, for the market, since the article mentions Jakarta and discusses an Indonesian company, it's safe to default to "Indonesian Market" as per the guidelines.
+Wait, but in the example given by the user, they have <stock>ASSA</stock>, which is a logistics company. So that makes sense for the transport industry. I need to ensure that I correctly identify the stock codes and match them with their respective industries.
 
-I should make sure each tag is correctly formatted without any extra text or explanations. Just the relevant information within the appropriate tags.
+I should also consider cases where no stock is mentioned—then skip the stock tag. Similarly, if the article doesn't specify an industry or market, omit those tags as well. The market tag's default is Indonesian Market unless a different one is indicated in the text.
+
+So, when processing each article, I'll first scan for any company names with stock codes. If found, extract them into the <stock> tag. Next, determine the industry based on keywords related to the company's operations or the content of the article. Finally, check if there's a mention of another market; if not, stick with Indonesian Market.
+
+I might need some help identifying industries because certain terms can be ambiguous. For example, if an article talks about technology partnerships but doesn't specify the industry, I might have to infer based on context or common associations. Also, handling languages other than English could pose a challenge in recognizing stock codes and industry terms accurately.
+
+Another thing is ensuring that the tags are correctly formatted without any extra spaces or incorrect casing. The example shows all caps for the stock code, so I should maintain consistency there. The industry name should be in Indonesian, like "Industri Transportasi" as shown.
+
+I think it's also important to consider how the output will be used. Maybe this data is being fed into another system that relies on these tags, so accuracy is key. Errors here could lead to misclassification or incorrect data processing down the line.
+
+I should test my approach with a few different articles to see if I consistently apply the criteria correctly. For instance, an article about a financial services company should trigger the finance industry tag and include any relevant stock codes. If it's about a global market trend without specifying a region, then the market tag would still default to Indonesian unless told otherwise.
+
+Also, considering that some articles might not fall neatly into these categories, I need to handle cases where none of the tags apply by simply omitting them. This way, the output remains clean and only includes relevant information.
+
+In summary, my steps are: extract stock codes with their ticker symbols, identify the industry based on context or keywords, default the market to Indonesian unless specified otherwise, and structure everything properly in HTML tags as per the user's instructions.
 </think>
 
-<stock>ASSA</stock>
-<industry>Industri Transportasi</industry>
+```html
+<stock>TBLA</stock>
+<industry>Industri Media</industry>
 <market>Indonesian Market</market>
+```
