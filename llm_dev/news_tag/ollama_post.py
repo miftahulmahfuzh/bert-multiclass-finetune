@@ -11,7 +11,7 @@ def call_ollama_api(prompt):
     url = "http://localhost:11435/api/generate"
 
     payload = {
-        "model": "deepseek-r1:32b",
+        "model": "deepseek-r1:7b",
         "prompt": prompt,
         "temperature": 0,
         "top_p": 1,      # Set to 1 to disable top-p sampling
