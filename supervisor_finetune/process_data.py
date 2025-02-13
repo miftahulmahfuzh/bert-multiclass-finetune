@@ -57,7 +57,7 @@ def process_dataset(df):
     # 3. Create final dataset format
     processed_df = pd.DataFrame({
         'text': df['Questions'],
-        'label_id': df['Agent'].map(label2id),
+        'label': df['Agent'].map(label2id),
         'label_str': df['Agent']
     })
 
@@ -67,7 +67,7 @@ def process_dataset(df):
 
     # Save splits to CSV
     train_df.to_csv('data/train.csv', index=False)
-    dev_df.to_csv('data/dev.csv', index=False)
+    dev_df.to_csv('data/validation.csv', index=False)
     test_df.to_csv('data/test.csv', index=False)
 
     # 4. Calculate and save label distribution
