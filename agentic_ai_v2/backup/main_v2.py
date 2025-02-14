@@ -64,7 +64,7 @@ def agent_node(state, agent, name):
 
 # System messages for each expert
 investment_expert_system_message = SystemMessage(
-    content="""You are a senior investment expert at Tuntun Sekuritas with extensive knowledge of financial markets and investment strategies. Your responsibilities include:
+    content="""You are a investment expert at Tuntun Sekuritas with extensive knowledge of financial markets and investment strategies. Your responsibilities include:
     - Providing comprehensive investment advice based on client goals and risk tolerance
     - Analyzing market trends and economic conditions
     - Recommending diverse investment strategies across multiple asset classes
@@ -118,14 +118,24 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], operator.add]
     next: str
 
+import os
+os.environ["TAVILY_API_KEY"] = ""
+
+from typing import Annotated
+
+from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_experimental.tools import PythonREPLTool
+
+tavily_tool = TavilySearchResults(max_results=5)
+
 # Create agents
 from langgraph.prebuilt import create_react_agent
 
-investment_expert_agent = create_react_agent(llm, tools=[], state_modifier=investment_expert_system_message)
-stock_expert_agent = create_react_agent(llm, tools=[], state_modifier=stock_expert_system_message)
-mutual_fund_expert_agent = create_react_agent(llm, tools=[], state_modifier=mutual_fund_expert_system_message)
-tuntun_product_expert_agent = create_react_agent(llm, tools=[], state_modifier=tuntun_product_expert_system_message)
-customer_service_agent = create_react_agent(llm, tools=[], state_modifier=customer_service_system_message)
+investment_expert_agent = create_react_agent(llm, tools=[tavily_tool], state_modifier=investment_expert_system_message)
+stock_expert_agent = create_react_agent(llm, tools=[tavily_tool], state_modifier=stock_expert_system_message)
+mutual_fund_expert_agent = create_react_agent(llm, tools=[tavily_tool], state_modifier=mutual_fund_expert_system_message)
+tuntun_product_expert_agent = create_react_agent(llm, tools=[tavily_tool], state_modifier=tuntun_product_expert_system_message)
+customer_service_agent = create_react_agent(llm, tools=[tavily_tool], state_modifier=customer_service_system_message)
 
 # Create agent nodes
 investment_expert_node = functools.partial(agent_node, agent=investment_expert_agent, name="investment_expert")
@@ -160,10 +170,8 @@ workflow.add_edge(START, "supervisor")
 # Compile the graph
 graph = workflow.compile()
 
-# Example usage
-# m = "I'm interested in investing with Tuntun Sekuritas. Can you tell me about your investment products and how to get started?"
-m = "How to choose stable stocks"
-m = "Make a summary of SMGR stock research?"
+from queries import m
+
 if __name__ == "__main__":
     for s in graph.stream({
         "messages": [
