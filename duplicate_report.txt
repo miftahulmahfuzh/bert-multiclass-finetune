@@ -1,0 +1,73 @@
+Report Created on 2025-02-17
+
+Raw Data Link: https://docs.google.com/spreadsheets/d/1JWjvakXNdrpGJSeQt0R4GPkNghVevaPC/edit?usp=sharing&ouid=115732800758806068195&rtpof=true&sd=true
+
+Detailed Duplicate Title Analysis:
+--------------------------------------------------------------------------------
+
+1 - Title: 2 Emiten Jumbo Mau IPO, Bos BEI Beri Bocorannya
+Found in 2 rows.
+Subcategories for each instance:
+  Index 315: Initial Public Offerings (IPOs)
+  Index 345: Initial Public Offerings (IPOs)
+--------------------------------------------------------------------------------
+
+2 - Title: Delisting, HDTX Siapkan Anggaran Buyback Rp200 per Lembar
+Found in 2 rows.
+Subcategories for each instance:
+  Index 536: Share Buybacks
+  Index 669: Delistings
+--------------------------------------------------------------------------------
+
+3 - Title: Delisting, Michelin Tender Offer Saham MASA di Harga Premium
+Found in 2 rows.
+Subcategories for each instance:
+  Index 701: Delistings
+  Index 889: Tender Offers
+--------------------------------------------------------------------------------
+
+4 - Title: Jadi Pengendali Mitra Investindo (MITI), Inti Bina Utama Ancang-ancang Tender Offer
+Found in 2 rows.
+Subcategories for each instance:
+  Index 480: Rights Issues
+  Index 807: Tender Offers
+--------------------------------------------------------------------------------
+
+5 - Title: Jelang Spin Off dan Merger, BTN Syariah Terus Bersolek, Ini Faktanya
+Found in 2 rows.
+Subcategories for each instance:
+  Index 236: Mergers and Acquisitions
+  Index 703: Spin-offs
+--------------------------------------------------------------------------------
+
+6 - Title: Siloam International (SILO) Mau Akuisisi Rumah Sakit First REIT
+Found in 2 rows.
+Subcategories for each instance:
+  Index 218: Mergers and Acquisitions
+  Index 288: Mergers and Acquisitions
+--------------------------------------------------------------------------------
+
+7 - Title: Upaya TGRA bangkit dari keterpurukan: rights issue hingga akuisisi
+Found in 2 rows.
+Subcategories for each instance:
+  Index 215: Mergers and Acquisitions
+  Index 407: Rights Issues
+--------------------------------------------------------------------------------
+
+Summary:
+Total number of duplicate titles (excluding NaN): 7
+
+NaN Analysis by Subcategory:
+--------------------------------------------------------------------------------
+
+Subcategory: Share Buybacks
+  NaN Titles: 38
+  NaN Content: 38
+
+Subcategory: Spin-offs
+  NaN Titles: 24
+  NaN Content: 24
+
+Total NaN counts:
+News Title      62
+News Content    62

@@ -1,0 +1,34 @@
+{
+   "model": {
+      "name": "indobenchmark/indobert-lite-large-p2"
+   },
+   "training": {
+      "gpu_ids": [
+         0
+      ],
+      "max_length": 512,
+      "batch_size": 16,
+      "epochs": 20,
+      "warmup_steps": 0,
+      "learning_rate": 2e-05,
+      "beta_1": 0.9,
+      "beta_2": 0.999,
+      "eps": 1e-08,
+      "weight_decay": 0.01,
+      "amsgrad": false,
+      "save_training_state": false
+   },
+   "nccl": {
+      "host": "localhost",
+      "port": "12355"
+   },
+   "wandb": {
+      "project": "tuntun-news-cls-v1-bert",
+      "url": "https://wandb.ai/mahfuzh-personal/tuntun-news-cls-v1-bert/runs/f1jfwo4v"
+   },
+   "paths": {
+      "data_dir": "data",
+      "use_cache": true,
+      "output_dir": "indobenchmark/indobert-lite-large-p2_20250217_163422"
+   }
+}
