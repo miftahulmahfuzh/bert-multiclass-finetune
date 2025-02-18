@@ -4,7 +4,7 @@
    },
    "training": {
       "gpu_ids": [
-         0
+         1
       ],
       "max_length": 512,
       "batch_size": 16,
@@ -20,15 +20,15 @@
    },
    "nccl": {
       "host": "localhost",
-      "port": "12355"
+      "port": "12356"
    },
    "wandb": {
       "project": "tuntun-news-cls-v1-bert",
-      "url": "https://wandb.ai/mahfuzh-personal/tuntun-news-cls-v1-bert/runs/f1jfwo4v"
+      "url": "https://wandb.ai/mahfuzh-personal/tuntun-news-cls-v1-bert/runs/w9jky94j"
    },
    "paths": {
       "data_dir": "data",
       "use_cache": true,
-      "output_dir": "indobenchmark/indobert-lite-large-p2_20250217_163422"
+      "output_dir": "indobenchmark/indobert-lite-large-p2_20250218_104412"
    }
 }
