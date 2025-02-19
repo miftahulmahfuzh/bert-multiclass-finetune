@@ -13,7 +13,8 @@ from typing import List, Dict, Union
 def test_classifier(texts: List[str]) -> Dict[str, Union[str, List[Dict[str, float]]]]:
     # API endpoint
     # url = "http://localhost:8000/predict"
-    url = "http://10.183.0.2:8000/predict"
+    # url = "http://10.183.0.2:8000/predict"
+    url = "http://35.247.154.29:8000/predict"
     # Prepare the request payload
     payload = {
         "text": texts
