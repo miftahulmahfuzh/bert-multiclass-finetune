@@ -20,7 +20,6 @@ members = [
     'customer_service'
 ]
 
-
 llm = ChatOpenAI(
     model="gpt-3.5-turbo",
     temperature=0,
@@ -79,9 +78,6 @@ from langgraph.prebuilt import create_react_agent
 tools = [search_and_summarize, scrape_webpages]
 stock_tools = [process_stock_query, analyze_stock_data]
 
-# TODO: fix analyze_basic_trading_data
-# example question: give me an analysis on BBCA on the last 7 days
-
 investment_expert_agent = create_react_agent(llm, tools=tools, state_modifier=investment_expert_system_message)
 stock_expert_agent = create_react_agent(llm, tools=stock_tools, state_modifier=stock_expert_system_message)
 mutual_fund_expert_agent = create_react_agent(llm, tools=tools, state_modifier=mutual_fund_expert_system_message)
@@ -128,6 +124,11 @@ graph = workflow.compile()
 
 from queries import m
 
+def save_to_file(user_query, chatbot_answer):
+    with open("cache/input_output.txt", "a") as f:
+        f.write(f"input:\n{user_query}\n\noutput:\n{chatbot_answer}\n\n{'-'*40}\n")
+
+chatbot_messages = []
 if __name__ == "__main__":
     config = {"recursion_limit": 100}
     for s in graph.stream({
@@ -137,4 +138,10 @@ if __name__ == "__main__":
     }, config=config):
         if "__end__" not in s:
             print(s)
+            for member in members:
+                if member in s:
+                    k = s[member]["messages"][0].content
+                    # print(f"K KEYS: {k.content}")
+                    chatbot_messages.append(k)
             print("----")
+    save_to_file(m, chatbot_messages[-1])
