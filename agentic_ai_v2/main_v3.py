@@ -1,12 +1,13 @@
-import os
-from typing import Annotated, Sequence, TypedDict, List, Dict
+import environments
+import json
 import functools
 import operator
+from pydantic import BaseModel
+from typing import Literal, Annotated, Sequence, TypedDict, List, Dict
+
 from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from pydantic import BaseModel
-from typing import Literal
 from langgraph.graph import END, StateGraph, START
 from langchain_community.document_loaders import WebBaseLoader
 
@@ -19,9 +20,6 @@ members = [
     'customer_service'
 ]
 
-# OpenAI and Tavily configuration
-os.environ["OPENAI_API_KEY"] = ""
-os.environ["TAVILY_API_KEY"] = ""
 
 llm = ChatOpenAI(
     model="gpt-3.5-turbo",
