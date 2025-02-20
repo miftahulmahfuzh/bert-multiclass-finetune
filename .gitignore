@@ -9,3 +9,4 @@ financial_news_data_v2/
 financial_news_data_v2_no_pad/
 __pycache__/
 gavin_data/
+environments.py
