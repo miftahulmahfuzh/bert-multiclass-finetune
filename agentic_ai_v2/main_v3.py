@@ -61,25 +61,36 @@ from system_messages import (
 
 from search_tool import (
     TavilySearchResults,
-    agent_node,
     search_and_summarize,
     scrape_webpages,
+    agent_node
+)
+from stock_expert.stock_query_preprocessing import (
+    process_stock_query,
+    analyze_stock_data,
+)
+from stock_expert.stock_agent_node import (
+    stock_expert_agent_node
 )
 
 # Create agents with tools
 from langgraph.prebuilt import create_react_agent
 
 tools = [search_and_summarize, scrape_webpages]
+stock_tools = [process_stock_query, analyze_stock_data]
+
+# TODO: fix analyze_basic_trading_data
+# example question: give me an analysis on BBCA on the last 7 days
 
 investment_expert_agent = create_react_agent(llm, tools=tools, state_modifier=investment_expert_system_message)
-stock_expert_agent = create_react_agent(llm, tools=tools, state_modifier=stock_expert_system_message)
+stock_expert_agent = create_react_agent(llm, tools=stock_tools, state_modifier=stock_expert_system_message)
 mutual_fund_expert_agent = create_react_agent(llm, tools=tools, state_modifier=mutual_fund_expert_system_message)
 tuntun_product_expert_agent = create_react_agent(llm, tools=tools, state_modifier=tuntun_product_expert_system_message)
 customer_service_agent = create_react_agent(llm, tools=tools, state_modifier=customer_service_system_message)
 
 # Create agent nodes with web search capability
 investment_expert_node = functools.partial(agent_node, agent=investment_expert_agent, name="investment_expert")
-stock_expert_node = functools.partial(agent_node, agent=stock_expert_agent, name="stock_expert")
+stock_expert_node = functools.partial(stock_expert_agent_node, agent=stock_expert_agent, name="stock_expert")
 mutual_fund_expert_node = functools.partial(agent_node, agent=mutual_fund_expert_agent, name="mutual_fund_expert")
 tuntun_product_expert_node = functools.partial(agent_node, agent=tuntun_product_expert_agent, name="tuntun_product_expert")
 customer_service_node = functools.partial(agent_node, agent=customer_service_agent, name="customer_service")
@@ -118,11 +129,12 @@ graph = workflow.compile()
 from queries import m
 
 if __name__ == "__main__":
+    config = {"recursion_limit": 100}
     for s in graph.stream({
         "messages": [
             HumanMessage(content=m)
         ]
-    }):
+    }, config=config):
         if "__end__" not in s:
             print(s)
             print("----")

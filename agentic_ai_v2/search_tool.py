@@ -3,11 +3,6 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.tools import tool
 from typing import Dict, List
 
-# Agent node function
-def agent_node(state, agent, name):
-    result = agent.invoke(state)
-    return {"messages": [HumanMessage(content=result["messages"][-1].content, name=name)]}
-
 # Custom web search tools
 @tool
 def search_and_summarize(query: str) -> Dict:
