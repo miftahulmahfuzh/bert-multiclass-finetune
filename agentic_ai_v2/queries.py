@@ -19,4 +19,7 @@
 # m = "give me an analysis on BBCA on the last 7 days. is it recommended to buy?"
 # m = "give me an analysis on BAYU on the last 14 days. is it recommended to buy?"
 # m = "give me an analysis on ADHI on the last 21 days. is it recommended to buy?"
-m = "give me an analysis on BBCA on the last 2 years. is it recommended to sell?"
+# m = "give me an analysis on BBCA on the last 2 years. is it recommended to sell?"
+# m = "give me an analysis on BBCA from the first week of january this year. is it recommended to sell?"
+# m = "Is there any latest news from GOTO?"
+m = "what is valuation of stock (ADRO and BSSR)?"

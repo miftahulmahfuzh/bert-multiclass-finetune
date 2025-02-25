@@ -79,7 +79,7 @@ tools = [search_and_summarize, scrape_webpages]
 stock_tools = [process_stock_query, analyze_stock_data]
 
 investment_expert_agent = create_react_agent(llm, tools=tools, state_modifier=investment_expert_system_message)
-stock_expert_agent = create_react_agent(llm, tools=stock_tools, state_modifier=stock_expert_system_message)
+stock_expert_agent = create_react_agent(llm, tools=tools, state_modifier=stock_expert_system_message)
 mutual_fund_expert_agent = create_react_agent(llm, tools=tools, state_modifier=mutual_fund_expert_system_message)
 tuntun_product_expert_agent = create_react_agent(llm, tools=tools, state_modifier=tuntun_product_expert_system_message)
 customer_service_agent = create_react_agent(llm, tools=tools, state_modifier=customer_service_system_message)

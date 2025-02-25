@@ -65,3 +65,63 @@ Analysis period: 2023-02-25 to 2025-02-25
 Stock Code: BBCA
 
 ----------------------------------------
+input:
+give me an analysis on BBCA from the first week of january this year. is it recommended to sell?
+
+output:
+Based on the analysis of BBCA stock from the first week of January 2025, here are some key points:
+
+- The stock price of BBCA decreased from 9650.0 to 9525.0 IDR during the week, showing a decline of 125.0 IDR.
+- The stock experienced fluctuations throughout the week, with the highest price at 9900.0 IDR and the lowest at 9525.0 IDR.
+- The trading volume was relatively high, indicating active trading in the stock.
+
+Recommendation:
+Given the slight decline in the stock price during the analyzed period, it is not a clear signal to sell. It would be advisable to consider additional factors such as the company's financial performance, market conditions, and future outlook before making a decision. If you have a long-term investment horizon and believe in the company's fundamentals, holding onto the stock might be a better strategy. However, if there are specific concerns or if you have achieved your target returns, selling a portion of the holdings could be considered.
+
+For a more comprehensive analysis or specific recommendations tailored to your investment goals, it is recommended to consult with a financial advisor or conduct further research on BBCA and the broader market trends.
+
+Analysis period: 2025-01-01 to 2025-01-07
+Stock Code: BBCA
+
+----------------------------------------
+input:
+Is there any latest news from GOTO?
+
+output:
+The latest news from GoTo includes the introduction of new AI, automation, and management features to enhance IT productivity and business value. Additionally, GoTo has launched a mobile device management solution called GoTo Resolve to secure and manage all devices. GoTo has also partnered with TikTok to launch a 'buy now, pay later' service in Indonesia. Furthermore, GoTo Group has launched free nutritious meals in 13 cities/regencies and achieved positive adjusted EBITDA as announced in the 2024 third-quarter results.
+
+For more details, you can refer to the [GoTo news blog](https://www.goto.com/blog/news).
+
+Analysis period: 2025-02-25 to 2025-02-25
+Stock Code: I
+
+----------------------------------------
+input:
+what is valuation of stock (ADRO and BSSR)?
+
+output:
+### Stock Valuation Analysis:
+
+#### Baramulti Suksessarana Tbk (BSSR):
+- **Estimated DCF Value:** 13,314.98 IDR per stock, indicating an undervaluation of 68% compared to the current market price of 4,230 IDR.
+- **Market Cap:** IDR 11.25 trillion, with an enterprise value of 10.30 trillion.
+- **Intrinsic Value (Base Case):** 8,737.65 IDR per stock.
+- **Price-To-Earnings vs Peers:** BSSR has a Price-To-Earnings Ratio of 4.7x, favorable compared to the peer average of 6.4x.
+- **Fair Value (as of 2025-02-24):** 23,045.25 IDR per stock.
+
+#### Adaro Energy Tbk (ADRO):
+- **Intrinsic Value:** 6,319.62 IDR per stock based on Discounted Cash Flows model.
+- **Fair Value (as of 2025-02-24):** 20,493.1 IDR per stock according to Peter Lynch's Fair Value formula.
+- **Valuation Ratios:** PE Ratio of 4.56, EV / Earnings of 3.93.
+- **Market Cap:** 67.36 trillion IDR.
+
+For more detailed information and references, you can refer to the following sources:
+- [BSSR Valuation Source 1](https://www.alphaspread.com/security/idx/bssr/dcf-valuation/base-case)
+- [BSSR Valuation Source 2](https://stockanalysis.com/quote/idx/BSSR/statistics/)
+- [ADRO Valuation Source 1](https://valueinvesting.io/ADRO.JK/valuation/intrinsic-value)
+- [ADRO Valuation Source 2](https://www.morningstar.com/stocks/xidx/adro/quote)
+
+Analysis period: 2025-02-25 to 2025-02-25
+Stock Code: ADRO
+
+----------------------------------------
