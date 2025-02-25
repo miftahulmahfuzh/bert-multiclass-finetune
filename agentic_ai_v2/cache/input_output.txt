@@ -49,3 +49,19 @@ Analysis period: 2024-09-30 to 2025-02-24
 Stock Code: BBCA
 
 ----------------------------------------
+input:
+give me an analysis on BBCA on the last 2 years. is it recommended to sell?
+
+output:
+Based on the analysis of BBCA stock over the last 2 years, here are some key points:
+
+- The stock price of BBCA has shown fluctuations over the past 2 years, with some periods of gains and losses.
+- The stock has experienced both positive and negative changes in its price, indicating volatility in the market.
+- The stock has seen periods of growth and decline, with some days showing significant changes in price.
+
+Given the historical performance and volatility of BBCA stock over the last 2 years, it is recommended to carefully consider your investment goals, risk tolerance, and market conditions before making a decision to sell. It is advisable to consult with a financial advisor or conduct further analysis to make an informed decision based on your individual circumstances.
+
+Analysis period: 2023-02-25 to 2025-02-25
+Stock Code: BBCA
+
+----------------------------------------

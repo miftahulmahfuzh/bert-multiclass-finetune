@@ -108,7 +108,7 @@ def analyze_stock_data(query: str) -> Dict:
         return {"content": query_info["error"]}
 
     # Use the existing analyze_basic_trading_data function
-    from utils.basic_trading_tool import analyze_basic_trading_data
+    from utils.basic_trading_tool_openai import analyze_basic_trading_data
     result = analyze_basic_trading_data(
                 query_info['stock_code'],
                 query_info['start_date'],

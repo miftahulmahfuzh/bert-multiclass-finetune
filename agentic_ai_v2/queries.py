@@ -19,4 +19,4 @@
 # m = "give me an analysis on BBCA on the last 7 days. is it recommended to buy?"
 # m = "give me an analysis on BAYU on the last 14 days. is it recommended to buy?"
 # m = "give me an analysis on ADHI on the last 21 days. is it recommended to buy?"
-m = "give me an analysis on BBCA on the last 21 weeks. is it bullish or bearish?"
+m = "give me an analysis on BBCA on the last 2 years. is it recommended to sell?"

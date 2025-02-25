@@ -4,6 +4,9 @@ import json
 
 from utils.tuntun_api import get_basic_trading_data
 
+import os
+os.environ["LLM_MAX_LENGTH"] = 16385
+
 def analyze_basic_trading_data(sec_code: str, start_date: str, end_date: str) -> Dict:
     """Analyze basic trading data for a given stock over a specified time range"""
 
@@ -25,6 +28,7 @@ def analyze_basic_trading_data(sec_code: str, start_date: str, end_date: str) ->
     # print(f"START DATE API: {start_date_api}")
     # print(f"END DATE API: {end_date_api}")
 
+    # TODO: using tiktoken, break the loop if total token length > LLM_MAX_LENGTH
     for data in trading_data:
         transaction_date = data["transactionDate"]
         open_price = data["openPrice"]
