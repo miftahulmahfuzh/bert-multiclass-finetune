@@ -7,6 +7,9 @@ from utils.tuntun_api import get_basic_trading_data
 def analyze_basic_trading_data(sec_code: str, start_date: str, end_date: str) -> Dict:
     """Analyze basic trading data for a given stock over a specified time range"""
 
+    # print(f"START DATE: {start_date}")
+    # print(f"END DATE: {end_date}")
+
     # Fetch the basic trading data using the get_basic_trading_data function
     trading_data = get_basic_trading_data(sec_code, start_date, end_date)
 
@@ -16,6 +19,11 @@ def analyze_basic_trading_data(sec_code: str, start_date: str, end_date: str) ->
 
     # Process the data and prepare the analysis
     analysis_content = f"Analysis of {sec_code} from {start_date} to {end_date}:\n"
+
+    start_date_api = trading_data[-1]["transactionDate"]
+    end_date_api = trading_data[0]["transactionDate"]
+    # print(f"START DATE API: {start_date_api}")
+    # print(f"END DATE API: {end_date_api}")
 
     for data in trading_data:
         transaction_date = data["transactionDate"]

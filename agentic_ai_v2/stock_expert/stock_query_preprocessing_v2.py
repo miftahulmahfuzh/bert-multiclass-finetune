@@ -56,6 +56,8 @@ def process_stock_query(query: str) -> Dict:
 
             start_date = root.find('start_date').text
             end_date = root.find('end_date').text
+            # print(f"START DATE: {start_date}")
+            # print(f"END DATE: {end_date}")
 
             # Validate dates (simple check)
             datetime.strptime(start_date, '%Y-%m-%d')
