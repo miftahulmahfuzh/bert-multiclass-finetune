@@ -64,7 +64,7 @@ from search_tool import (
     scrape_webpages,
     agent_node
 )
-from stock_expert.stock_query_preprocessing import (
+from stock_expert.stock_query_preprocessing_v2 import (
     process_stock_query,
     analyze_stock_data,
 )

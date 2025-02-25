@@ -17,4 +17,6 @@
 # m = "I want to prepare funds for my child's education, should I invest in shares or mutual funds?"
 # m = "What if I have joined Tuntun valuation buying at a good index and cheap prices, but the product doesn't increase?"
 # m = "give me an analysis on BBCA on the last 7 days. is it recommended to buy?"
-m = "give me an analysis on BAYU on the last 14 days. is it recommended to buy?"
+# m = "give me an analysis on BAYU on the last 14 days. is it recommended to buy?"
+# m = "give me an analysis on ADHI on the last 21 days. is it recommended to buy?"
+m = "give me an analysis on BBCA on the last 21 days. is it bullish or bearish?"
