@@ -125,3 +125,60 @@ Analysis period: 2025-02-25 to 2025-02-25
 Stock Code: ADRO
 
 ----------------------------------------
+input:
+What is the current price of BBCA?
+
+output:
+The current price of PT Bank Central Asia Tbk (BBCA) is 8,825 IDR. It has decreased by -1.12% in the past 24 hours.
+
+References used:
+- https://www.tradingview.com/symbols/IDX-BBCA/
+- https://marketcapof.com/stocks/bbca.jk/
+- https://www.investing.com/equities/bnk-central-as
+- https://tradingeconomics.com/bbca:ij
+- https://www.msn.com/en-us/money/stockdetails/bbca-id-stock/fi-bn91jc
+
+----------------------------------------
+input:
+give me an analysis on BBCA from the first week of january this year. is it recommended to sell?
+
+output:
+Based on the analysis of BBCA stock from the first week of January 2025, here are some key points:
+
+- The stock price of BBCA started at 9650.0 and ended the week at 9525.0, resulting in an overall decrease of 125.0 points.
+- The stock experienced fluctuations throughout the week:
+  - On 2025-01-07, the stock opened at 9675.0, closed at 9525.0, with a high of 9725.0 and a low of 9525.0, representing a change of -150.0 points (-1.55%).
+  - On 2025-01-06, the stock opened at 9850.0, closed at 9675.0, with a high of 9875.0 and a low of 9650.0, reflecting a change of -175.0 points (-1.78%).
+  - On 2025-01-03, the stock opened at 9900.0, closed at 9850.0, with a high of 9925.0 and a low of 9825.0, showing a change of -50.0 points (-0.51%).
+  - On 2025-01-02, the stock opened at 9650.0, closed at 9900.0, with a high of 9900.0 and a low of 9650.0, indicating a change of 225.0 points (2.33%).
+
+Considering the price fluctuations and the overall decrease in the stock price during the first week of January, it may not be an ideal time to sell BBCA stock. It is recommended to assess the stock's performance over a longer period and consider consulting with a financial advisor before making any selling decisions.
+
+Analysis period: 2025-01-01 to 2025-01-07
+Stock Code: BBCA
+
+----------------------------------------
+input:
+What bullish signal is most suitable for PTBA shares?
+
+output:
+Based on the web search results for PTBA shares, the following bullish signals are most suitable for PTBA:
+
+1. **Moving Averages**: Tracking the 200-day and 50-day moving averages can provide insights into the long-term trend of PTBA shares.
+
+2. **Dynamic Support EMA 21&34**: PTBA has moved above the dynamic support EMA 21&34, indicating a potential target area of 2400 after breaking the symmetrical triangle pattern.
+
+3. **Bullish Patterns**: Look out for bullish patterns like the bull flag pattern, double bottom pattern, and ascending triangle pattern, which are positive indicators for PTBA shares.
+
+4. **Stock Forecast and Analyst Recommendations**: Check the latest stock forecast, 12-month price target, predictions, and analyst recommendations for PTBA to gauge future performance.
+
+These signals suggest a positive outlook for PTBA shares, indicating potential upward movement in the stock price. It's essential to consider these signals along with other fundamental and technical factors before making investment decisions.
+
+References used:
+- https://www.investing.com/equities/tb-bukit-asam-technical
+- https://www.tradingview.com/symbols/IDX-PTBA/ideas/
+- https://www.wallstreetzen.com/blog/bullish-patterns/
+- https://www.investing.com/equities/tb-bukit-asam-consensus-estimates
+- https://www.tradingview.com/symbols/IDX-PTBA/
+
+----------------------------------------

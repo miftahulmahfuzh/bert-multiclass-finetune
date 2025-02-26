@@ -59,7 +59,6 @@ from system_messages import (
 )
 
 from search_tool import (
-    TavilySearchResults,
     search_and_summarize,
     scrape_webpages,
     agent_node
@@ -68,7 +67,7 @@ from stock_expert.stock_query_preprocessing_v2 import (
     process_stock_query,
     analyze_stock_data,
 )
-from stock_expert.stock_agent_node import (
+from stock_expert.stock_agent_node_v2 import (
     stock_expert_agent_node
 )
 
@@ -76,10 +75,10 @@ from stock_expert.stock_agent_node import (
 from langgraph.prebuilt import create_react_agent
 
 tools = [search_and_summarize, scrape_webpages]
-stock_tools = [process_stock_query, analyze_stock_data]
+stock_tools = [process_stock_query, analyze_stock_data, search_and_summarize]
 
 investment_expert_agent = create_react_agent(llm, tools=tools, state_modifier=investment_expert_system_message)
-stock_expert_agent = create_react_agent(llm, tools=tools, state_modifier=stock_expert_system_message)
+stock_expert_agent = create_react_agent(llm, tools=stock_tools, state_modifier=stock_expert_system_message)
 mutual_fund_expert_agent = create_react_agent(llm, tools=tools, state_modifier=mutual_fund_expert_system_message)
 tuntun_product_expert_agent = create_react_agent(llm, tools=tools, state_modifier=tuntun_product_expert_system_message)
 customer_service_agent = create_react_agent(llm, tools=tools, state_modifier=customer_service_system_message)

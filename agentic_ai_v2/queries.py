@@ -22,4 +22,6 @@
 # m = "give me an analysis on BBCA on the last 2 years. is it recommended to sell?"
 # m = "give me an analysis on BBCA from the first week of january this year. is it recommended to sell?"
 # m = "Is there any latest news from GOTO?"
-m = "what is valuation of stock (ADRO and BSSR)?"
+# m = "what is valuation of stock (ADRO and BSSR)?"
+m = "What bullish signal is most suitable for PTBA shares?"
+# m = "What is the current price of BBCA?"
