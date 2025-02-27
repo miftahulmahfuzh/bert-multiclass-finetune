@@ -27,24 +27,24 @@ def count_words(text):
 
 def summarize_news(input_file, prompt_file="prompt.txt"):
     """
-    Summarize news articles from a TSV file using Ollama API
+    Summarize news articles from an Excel file using Ollama API
 
     Parameters:
     -----------
     input_file : str
-        Path to the input TSV file
+        Path to the input Excel file
     prompt_file : str, optional
         Path to the prompt template file
     """
     # Extract date from the filename
-    news_date = os.path.basename(input_file).replace(".tsv", "")
+    news_date = os.path.basename(input_file).replace(".xlsx", "")
 
     # Create output directories
     os.makedirs("summary_output", exist_ok=True)
     os.makedirs("summary_benchmark", exist_ok=True)
 
-    # Load the TSV file
-    input_df = pd.read_csv(input_file, sep='\t')
+    # Load the Excel file
+    input_df = pd.read_excel(input_file)
 
     # Load the prompt template
     prompt_template = load_prompt(prompt_file)
@@ -108,8 +108,8 @@ def summarize_news(input_file, prompt_file="prompt.txt"):
     input_df['summary'] = results
 
     # Save the results
-    output_file = f"summary_output/{news_date}.tsv"
-    input_df.to_csv(output_file, sep='\t', index=False)
+    output_file = f"summary_output/{news_date}.xlsx"
+    input_df.to_excel(output_file, index=False)
 
     # Calculate benchmarks
     avg_duration = total_duration / total_instances if total_instances > 0 else 0
@@ -155,20 +155,22 @@ def summarize_news(input_file, prompt_file="prompt.txt"):
     return input_df
 
 if __name__ == "__main__":
-    # Automatically process all TSV files in the data directory
+    # Automatically process all Excel files in the data directory
     data_dir = "data"
 
     if not os.path.exists(data_dir):
         print(f"Error: {data_dir} directory not found.")
         exit(1)
 
-    tsv_files = [f for f in os.listdir(data_dir) if f.endswith('.tsv')]
+    xlsx_files = [f for f in os.listdir(data_dir) if f.endswith('.xlsx')]
 
-    if not tsv_files:
-        print(f"No TSV files found in {data_dir} directory.")
+    if not xlsx_files:
+        print(f"No Excel files found in {data_dir} directory.")
         exit(1)
 
-    for tsv_file in tsv_files:
-        input_file = os.path.join(data_dir, tsv_file)
-        print(f"Processing {input_file}...")
-        summarize_news(input_file)
+    dates = ["2025-01-14"]
+    for xlsx_file in xlsx_files:
+        input_file = os.path.join(data_dir, xlsx_file)
+        if os.path.basename(input_file).replace(".xlsx", "") in dates:
+            print(f"Processing {input_file}...")
+            summarize_news(input_file)

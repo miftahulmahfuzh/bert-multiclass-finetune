@@ -1,14 +1,4 @@
 import json
-
-fname = "clean-newsletter.json"
-d = json.load(open(fname))
-print(len(d))
-print(d.keys())
-print(d["published_date"]["68392"])
-print(d["title"]["68392"])
-print(d["content"]["68392"])
-
-import json
 import pandas as pd
 import os
 from datetime import datetime
@@ -16,7 +6,7 @@ from datetime import datetime
 def fetch_by_date(date_str, fname="clean-newsletter.json"):
     """
     Fetch articles published on a specific date from the JSON data file
-    and save them to a TSV file.
+    and save them to an Excel file.
 
     Parameters:
     -----------
@@ -63,9 +53,9 @@ def fetch_by_date(date_str, fname="clean-newsletter.json"):
     # Create the data directory if it doesn't exist
     os.makedirs("data", exist_ok=True)
 
-    # Save the DataFrame to a TSV file
-    output_file = f"data/{date_str}.tsv"
-    df.to_csv(output_file, sep='\t', index=False)
+    # Save the DataFrame to an Excel file
+    output_file = f"data/{date_str}.xlsx"
+    df.to_excel(output_file, sheet_name=date_str, index=False)
 
     print(f"Saved {len(df)} articles to {output_file}")
 
