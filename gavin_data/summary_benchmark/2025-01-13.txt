@@ -1,14 +1,14 @@
 news_date: 2025-01-13
-start_time: 2025-02-27 13:24:55
-end_time: 2025-02-27 13:25:59
-total_instances: 3
-total_duration_seconds: 64.48
-average_duration_seconds: 21.49
-avg_input_word_count: 143.0
+start_time: 2025-02-27 13:39:32
+end_time: 2025-02-27 15:26:21
+total_instances: 206
+total_duration_seconds: 6408.79
+average_duration_seconds: 31.11
+avg_input_word_count: 337.81
 min_input_word_count: 48
-max_input_word_count: 321
-avg_output_word_count: 57.33
-min_output_word_count: 49
-max_output_word_count: 69
-min_duration_seconds: 13.77
-max_duration_seconds: 33.57
+max_input_word_count: 1266
+avg_output_word_count: 69.55
+min_output_word_count: 45
+max_output_word_count: 216
+min_duration_seconds: 15.93
+max_duration_seconds: 93.92

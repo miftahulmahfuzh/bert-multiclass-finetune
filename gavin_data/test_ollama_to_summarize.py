@@ -44,7 +44,7 @@ def summarize_news(input_file, prompt_file="prompt.txt"):
     os.makedirs("summary_benchmark", exist_ok=True)
 
     # Load the TSV file
-    input_df = pd.read_csv(input_file, sep='\t')[:3]
+    input_df = pd.read_csv(input_file, sep='\t')
 
     # Load the prompt template
     prompt_template = load_prompt(prompt_file)
