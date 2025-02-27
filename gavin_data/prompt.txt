@@ -1,0 +1,2 @@
+summarize this news article to 2 sentences.
+<<TEXT>>

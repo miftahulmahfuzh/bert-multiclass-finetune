@@ -1,12 +1,13 @@
 *.7z
 *.csv
+*.tsv
 *.pkl
 *.safetensors
 *.pt
+clean-newsletter.json
 tokenizer.json
 financial_news_data/
 financial_news_data_v2/
 financial_news_data_v2_no_pad/
 __pycache__/
-gavin_data/
 environments.py
