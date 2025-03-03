@@ -1,4 +1,4 @@
 summarize this news article to 2 sentences.
 <<TEXT>>
 
-just write the summary directly without any explanation
+just write the summary in indonesian, directly without any explanation

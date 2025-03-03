@@ -62,4 +62,4 @@ def fetch_by_date(date_str, fname="clean-newsletter.json"):
     return df
 
 # Example usage
-df = fetch_by_date("2025-01-13")
+df = fetch_by_date("2025-01-16")

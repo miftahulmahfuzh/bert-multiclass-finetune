@@ -109,7 +109,7 @@ def summarize_news(input_file, prompt_file="prompt.txt"):
 
     # Save the results
     output_file = f"summary_output/{news_date}.xlsx"
-    input_df.to_excel(output_file, index=False)
+    input_df.to_excel(output_file, sheet_name="summary", index=False)
 
     # Calculate benchmarks
     avg_duration = total_duration / total_instances if total_instances > 0 else 0
@@ -133,14 +133,14 @@ def summarize_news(input_file, prompt_file="prompt.txt"):
         "total_instances": total_instances,
         "total_duration_seconds": round(total_duration, 2),
         "average_duration_seconds": round(avg_duration, 2),
+        "min_duration_seconds": round(min(durations) if durations else 0, 2),
+        "max_duration_seconds": round(max(durations) if durations else 0, 2),
         "avg_input_word_count": round(avg_input_word_count, 2),
         "min_input_word_count": min_input_word_count,
         "max_input_word_count": max_input_word_count,
         "avg_output_word_count": round(avg_output_word_count, 2),
         "min_output_word_count": min_output_word_count,
-        "max_output_word_count": max_output_word_count,
-        "min_duration_seconds": round(min(durations) if durations else 0, 2),
-        "max_duration_seconds": round(max(durations) if durations else 0, 2)
+        "max_output_word_count": max_output_word_count
     }
 
     # Write benchmark to file
@@ -168,7 +168,7 @@ if __name__ == "__main__":
         print(f"No Excel files found in {data_dir} directory.")
         exit(1)
 
-    dates = ["2025-01-14"]
+    dates = ["2025-01-13"]
     for xlsx_file in xlsx_files:
         input_file = os.path.join(data_dir, xlsx_file)
         if os.path.basename(input_file).replace(".xlsx", "") in dates:
