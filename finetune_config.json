@@ -1,0 +1,45 @@
+{
+    "model": {
+        "name": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+    },
+    "paths": {
+        "data_dir": "data",
+        "_comment_1": "cache from tokenization is saved in data_dir",
+        "use_cache": true,
+        "trained_adapter": "/home/devmiftahul/nlp/llm_dev/v3/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B_20250130_104532/best-checkpoint",
+        "_comment_2": "trained_adapter is used to initialize peft during test mode",
+        "prompt": "prompts/prompt_v1.txt"
+    },
+    "data": {
+        "dataset_name": "mahfuzh74/comment_generation",
+        "validation_split": 0.1,
+        "input_column": "post",
+        "output_column": "comment"
+    },
+    "training": {
+        "mode": "train",
+        "batch_size": 4,
+        "epochs": 1,
+        "learning_rate": 5e-5,
+        "max_length": 1024,
+        "max_new_tokens": 64,
+        "save_steps": 2000,
+        "eval_steps": 2000,
+        "logging_steps": 100,
+        "save_total_limit": 1,
+        "num_workers": 2,
+        "eval_strategy": "steps",
+        "save_strategy": "steps",
+        "report_to": "none"
+    },
+    "lora": {
+        "r": 8,
+        "alpha": 32,
+        "target_modules": ["q_proj", "v_proj"],
+        "dropout": 0.05,
+        "bias": "none"
+    },
+    "wandb": {
+        "project": "comment-generation"
+    }
+}

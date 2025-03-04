@@ -1,8 +1,0 @@
-{
-   "best_epoch": 3,
-   "test_loss": 0.0083682956174016,
-   "test_accuracy": 0.9989904088844018,
-   "training_duration_hours": 2,
-   "training_duration_minutes": 10,
-   "training_duration_seconds": 18
-}
