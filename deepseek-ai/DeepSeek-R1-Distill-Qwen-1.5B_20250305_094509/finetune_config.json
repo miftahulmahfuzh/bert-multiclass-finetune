@@ -4,12 +4,12 @@
    },
    "paths": {
       "data_dir": "data",
-      "_comment_1": "cache from tokenization is saved in data_dir",
       "use_cache": true,
+      "_comment_1": "cache from tokenization is saved in data_dir",
       "trained_adapter": "/home/devmiftahul/nlp/llm_dev/v3/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B_20250130_104532/best-checkpoint",
       "_comment_2": "trained_adapter is used to initialize peft during test mode",
       "prompt": "prompts/prompt_v1.txt",
-      "output_dir": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B_20250304_112635"
+      "output_dir": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B_20250305_094509"
    },
    "data": {
       "dataset_name": "mahfuzh74/comment_generation",
@@ -22,8 +22,8 @@
       "batch_size": 4,
       "epochs": 1,
       "learning_rate": 5e-05,
-      "max_length": 1024,
-      "max_new_tokens": 64,
+      "max_length": 1536,
+      "max_new_tokens": 8192,
       "save_steps": 2000,
       "eval_steps": 2000,
       "logging_steps": 100,
@@ -45,6 +45,6 @@
    },
    "wandb": {
       "project": "comment-generation",
-      "url": "https://wandb.ai/mahfuzh-personal/comment-generation/runs/qyuoru0e"
+      "url": "https://wandb.ai/mahfuzh-personal/comment-generation/runs/o306v7mb"
    }
 }

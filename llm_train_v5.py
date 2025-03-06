@@ -103,14 +103,30 @@ def evaluate_predictions(trainer, config, tokenizer):
                 'attention_mask': item['attention_mask'].unsqueeze(0).to(model.device)
             }
 
+            # outputs = model.generate(
+            #     **inputs,
+            #     max_new_tokens=config["training"]["max_new_tokens"],
+            #     pad_token_id=tokenizer.pad_token_id,
+            #     eos_token_id=tokenizer.eos_token_id,
+            #     num_return_sequences=1,
+            #     temperature=0.1
+            # )
             outputs = model.generate(
                 **inputs,
                 max_new_tokens=config["training"]["max_new_tokens"],
                 pad_token_id=tokenizer.pad_token_id,
-                num_return_sequences=1
+                eos_token_id=tokenizer.eos_token_id,
+                num_return_sequences=1,
+                temperature=0.7,           # Slightly higher temperature for creativity
+                top_k=50,                  # Top-k sampling to limit to likely tokens
+                top_p=0.9,                 # Top-p sampling for diversity
+                repetition_penalty=1.2,    # Penalize repetition
+                do_sample=True,            # Enable sampling for varied outputs
+                no_repeat_ngram_size=2     # Prevent repeating 2-grams
             )
 
             pred_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+            pred_text = pred_text.replace(item["text"], "")
             predictions.append(pred_text)
 
             # Get target text
@@ -121,20 +137,16 @@ def evaluate_predictions(trainer, config, tokenizer):
     results_df = pd.DataFrame({
         'text': texts,
         'true_label': targets,
-        'predicted_label': predictions,
-        'correct': [t == p for t, p in zip(targets, predictions)]
+        'predicted_label': predictions
     })
-
-    # Calculate accuracy metrics
-    accuracy = results_df['correct'].mean()
-    print(f"\nTest Accuracy: {accuracy:.4f}")
 
     # Save results
     output_path = os.path.join(config["paths"]["output_dir"], 'test_predictions.xlsx')
     results_df.to_excel(output_path, index=False)
     print(f"\nPrediction results saved to: {output_path}")
 
-    return results_df, accuracy
+    # return results_df, accuracy
+    return results_df
 
 class CachedInstructionDataset(Dataset):
     def __init__(
@@ -299,11 +311,12 @@ def main():
 
         # Evaluate on the test data
         print("\nGenerating detailed test predictions...")
-        results_df, test_accuracy = evaluate_predictions(model, config, tokenizer)
+        # results_df, test_accuracy = evaluate_predictions(model, config, tokenizer)
+        results_df = evaluate_predictions(model, config, tokenizer)
 
         # Log final metrics to wandb
         wandb.log({
-            "final_test_accuracy": test_accuracy,
+            # "final_test_accuracy": test_accuracy,
             "prediction_file": os.path.join(output_path, 'test_predictions.xlsx')
         })
 
@@ -452,11 +465,12 @@ def main():
 
     # Perform prediction analysis
     print("\nGenerating detailed test predictions...")
-    results_df, test_accuracy = evaluate_predictions(trainer, config, tokenizer)
+    # results_df, test_accuracy = evaluate_predictions(trainer, config, tokenizer)
+    results_df = evaluate_predictions(trainer, config, tokenizer)
 
     # Log final metrics to wandb
     wandb.log({
-        "final_test_accuracy": test_accuracy,
+        # "final_test_accuracy": test_accuracy,
         "prediction_file": os.path.join(config["paths"]["output_dir"], 'test_predictions.xlsx')
     })
 
