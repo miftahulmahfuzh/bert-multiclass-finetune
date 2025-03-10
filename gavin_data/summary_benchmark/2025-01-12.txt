@@ -1,0 +1,14 @@
+news_date: 2025-01-12
+start_time: 2025-03-03 13:20:38
+end_time: 2025-03-03 13:39:41
+total_instances: 46
+total_duration_seconds: 1143.61
+average_duration_seconds: 24.86
+min_duration_seconds: 18.14
+max_duration_seconds: 36.51
+avg_input_word_count: 385.04
+min_input_word_count: 103
+max_input_word_count: 1249
+avg_output_word_count: 50.33
+min_output_word_count: 37
+max_output_word_count: 66
