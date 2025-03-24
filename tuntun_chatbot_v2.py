@@ -1,10 +1,13 @@
 from langchain_core.prompts import PromptTemplate
-template = """<|begin_of_text|> <|start_header_id|>system<|end_header_id|>You are a virtual assistant for the Tuntun investment app. Based on the given JSON context or tools output, provide a comprehensive response that accurately answers the query. If the required information is not available, respond with 'I don't know' without referencing any sources or tools used. Ensure your response is complete, clear, and helpful.
-<|eot_id|> <|start_header_id|>context<|end_header_id|> {tools_output}
-{context} <|eot_id|>
-<|start_header_id|>history<|end_header_id|> {chat_history} <|eot_id|>
-<|start_header_id|>user<|end_header_id|> {question} <|eot_id|>
-<|start_header_id|>assistant<|end_header_id|>"""
+from config import settings
+
+template = ""
+pv = settings.PROMPT_VERSION.lower()
+if pv == "v1":
+    from prompt.prompt_v1 import template
+elif pv == "v2":
+    from prompt.prompt_v2 import template
+
 prompt = PromptTemplate(
     input_variables=["context", "question", "tools_output", "chat_history"],
     template=template
@@ -20,10 +23,8 @@ from datetime import datetime
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.memory import ConversationBufferMemory
 from core.model import llm_ollama
-# from core.prompt import prompt, doc_prompt
 from core.rag import vectorstore_none
 from tool.tool_caller import process_tools
-from config import settings
 from db.arango import PyArangoDB
 
 # Initialize memory
@@ -36,7 +37,7 @@ memory = ConversationBufferMemory(
 db = PyArangoDB(
     url=settings.LOG_DB_URL,
     username=settings.LOG_DB_USERNAME,
-    password=settings.LOG_DB_PASSWORD,
+    password=settings.LOG_DB_PASSWORD.get_secret_value(),
     database=settings.LOG_DB_NAME
 )
 
