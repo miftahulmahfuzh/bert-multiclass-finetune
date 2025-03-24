@@ -12,7 +12,10 @@ from core.model import llm_ollama
 from tool.tool_faq_rag import faq_rag
 from tool.tool_search_web import search_using_third_party_raw
 from tool.tool_stock_info import historical_lookup, company_profile, shareholder_lookup, subsidiary_lookup, \
-    combined_vapfo_summary, combined_bvhl_pricemod
+    combined_vapfo_summary, combined_bvhl_pricemod, format_rupiah
+from tool.tool_news import news_summary
+
+from db.utils import get_current_timestamp
 
 
 @tool
@@ -95,9 +98,15 @@ def stock_price(code: str) -> str:
     print("Tool: stock_price called " + code)
     raw_res = requests.get(
         'https://ui-testing002.istock.co.id/stocks-ui/individual-stock/stock/get-stock-basic-info?accessToken=mockPass&code=' + code)
-    data = raw_res.json()['data']
-    res = "Latest price, stock_name: " + data['name'] + ", stock_price: " + format_rupiah(data['price']) + ", change: " + data[
-        'chg'] + ", change_percent: " + data['chgPercent']
+    res = f"Failed to get stock price of Stock Code: '{code}' from stock_price tool"
+    if raw_res:
+        data = raw_res.json()['data']
+        if isinstance(data, dict):
+            print(f"DATA: {data}")
+            if 'name' in data:
+                if data['name']:
+                    res = "Latest price, stock_name: " + data['name'] + ", stock_price: " + format_rupiah(data['price']) + ", change: " + data[
+            'chg'] + ", change_percent: " + data['chgPercent']
     return res
 
 
@@ -133,6 +142,7 @@ def get_current_time() -> str:
 
 tools = [weather_api, stock_price, get_news, web_query, fahrenheit_to_celsius, frequently_asked, combined_vapfo_summary,
          combined_bvhl_pricemod, historical_lookup, company_profile, shareholder_lookup, subsidiary_lookup]
+         # news_summary]
 tool_node = ToolNode(tools)
 llm_with_tools = llm_ollama.bind_tools(tools)
 
@@ -150,23 +160,33 @@ tool_mapping = {
     "company_profile": company_profile,
     "shareholder_lookup": shareholder_lookup,
     "subsidiary_lookup": subsidiary_lookup
+    # "news_summary": news_summary
 }
 
 
-def process_tools(query):
+def process_tools(question, prev_questions):
     tool_result = ""
     # tool_template = "Only use tool if question is related to the tool. Prioritize frequently_asked tool. Question: {question}"
-    tool_template = "[system_date (YYYY-MM-DD):" + str(datetime.today().strftime(
-        '%Y-%m-%d')) + "] Only use tool if question is related to the tool. Do not modify number formatting. Question: {question}"
+    time_str = str(datetime.today().strftime("%Y-%m-%d"))
+    pq = "\n- ".join(prev_questions)
+    tool_template = f"""system_date (YYYY-MM-DD): [{time_str}].
+    Only use tool if question is related to the tool. Do not modify number formatting.
+    Question: {question}\nPrevious Questions: {prev_questions}"""
     tool_prompt = PromptTemplate(
-        input_variables=["question"],
+        input_variables=["question", "prev_questions"],
         template=tool_template
     )
-    final_query = tool_prompt.format(question=query)
+    final_query = tool_prompt.format(question=question, prev_questions=pq)
+    print(f"LLM Query To Get Tools: {final_query}")
     llm_output = llm_with_tools.invoke(final_query)
+    selected_tools = []
     for tool_call in llm_output.tool_calls:
-        tool_output = tool_mapping[tool_call["name"].lower()].invoke(tool_call["args"])
+        selected_tool = tool_call["name"].lower()
+        selected_tools.append(selected_tool)
+        tool_output = tool_mapping[selected_tool].invoke(tool_call["args"])
         tool_result += str(
             "[tool_" + tool_call["name"].lower() + ": " + ToolMessage(tool_output, tool_call_id=tool_call[
                 "id"]).content + "]")
-    return tool_result
+    selected_tools_timestamp = get_current_timestamp()
+    print(f"Selected Tools: {selected_tools}")
+    return tool_result, selected_tools, selected_tools_timestamp

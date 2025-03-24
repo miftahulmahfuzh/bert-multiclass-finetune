@@ -1,9 +1,10 @@
-import datetime
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any, Union
 from pyArango.connection import Connection
 from pyArango.collection import Collection
 from pyArango.document import Document
+from db.utils import get_current_timestamp
+from config import settings
 
 
 class GraphDB(ABC):
@@ -38,8 +39,11 @@ class GraphDB(ABC):
 class PyArangoDB(GraphDB):
     """Implementation of GraphDB for ArangoDB using pyArango."""
 
-    def __init__(self, url: str = "http://localhost:8529", username: str = "root",
-                 password: str = "", database: str = "_system"):
+    def __init__(self,
+            url: str = "http://localhost:8529",
+            username: str = "root",
+            password: str = "",
+            database: str = "_system"):
         """
         Initialize PyArangoDB with connection parameters.
 
@@ -186,19 +190,6 @@ class PyArangoDB(GraphDB):
             print(f"Error updating document {doc_id}: {e}")
             return None
 
-    def get_current_timestamp(self, timezone_offset: int = 7) -> str:
-        """
-        Get current timestamp in ISO format with specified timezone offset.
-
-        Args:
-            timezone_offset: Hours offset from UTC (default: 7 for Jakarta)
-
-        Returns:
-            ISO formatted datetime string
-        """
-        tz = datetime.timezone(datetime.timedelta(hours=timezone_offset))
-        return datetime.datetime.now(tz).isoformat()
-
     def create_chat_log(self,
                     user_id: int,
                     query_id: int,
@@ -252,7 +243,7 @@ class PyArangoDB(GraphDB):
             "selected_tools_timestamp": selected_tools_timestamp
         }
 
-        return self.insert_document("chat_logs", log_data)
+        return self.insert_document(settings.LOG_DB_COLLECTION_NAME, log_data)
 
     def add_reaction(self, doc_id: str, reaction: int) -> Optional[Document]:
         """
@@ -267,10 +258,10 @@ class PyArangoDB(GraphDB):
         """
         update_data = {
             "reaction": reaction,
-            "reaction_timestamp": self.get_current_timestamp()
+            "reaction_timestamp": get_current_timestamp()
         }
 
-        return self.update_document("chat_logs", doc_id, update_data)
+        return self.update_document(settings.LOG_DB_COLLECTION_NAME, doc_id, update_data)
 
 
 def main():
@@ -289,7 +280,7 @@ def main():
         # db.create_collection("chat_logs")
 
         # # Create a sample chat log
-        # now = db.get_current_timestamp()
+        # now = get_current_timestamp()
         # doc = db.create_chat_log(
         #     user_id=101,
         #     query_id=1001,

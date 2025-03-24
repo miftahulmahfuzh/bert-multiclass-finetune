@@ -17,13 +17,14 @@ doc_prompt = PromptTemplate(
 
 import time
 from datetime import datetime
-import gradio as gr
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.memory import ConversationBufferMemory
 from core.model import llm_ollama
 # from core.prompt import prompt, doc_prompt
 from core.rag import vectorstore_none
 from tool.tool_caller import process_tools
+from config import settings
+from db.arango import PyArangoDB
 
 # Initialize memory
 memory = ConversationBufferMemory(
@@ -32,10 +33,24 @@ memory = ConversationBufferMemory(
     input_key="query"  # Changed to match RetrievalQA expected input
 )
 
+db = PyArangoDB(
+    url=settings.LOG_DB_URL,
+    username=settings.LOG_DB_USERNAME,
+    password=settings.LOG_DB_PASSWORD,
+    database=settings.LOG_DB_NAME
+)
+
 def combine_docs(docs):
     return "\n\n".join(doc.metadata['Answer'] for doc in docs)
 
-def rag_chain(question, history):
+def get_prev_questions(chat_history):
+    prev_questions = []
+    for i, msg in enumerate(chat_history):
+        if i % 2 == 0:
+            prev_questions.append(msg.content)
+    return prev_questions
+
+def rag_chain(question, stream=True):
     # Load previous conversation from memory
     chat_history = memory.load_memory_variables({})["chat_history"]
 
@@ -46,9 +61,10 @@ def rag_chain(question, history):
             f"Human: {msg.content}" if i % 2 == 0 else f"Assistant: {msg.content}"
             for i, msg in enumerate(chat_history)
         ])
+    prev_questions = get_prev_questions(chat_history)
 
     # Process tools and create partial prompt
-    tools_output = process_tools(question)
+    tools_output, selected_tools, selected_tools_timestamp = process_tools(question, prev_questions)
     processed_prompt = prompt.partial(
         tools_output=tools_output,
         chat_history=formatted_history
@@ -73,17 +89,38 @@ def rag_chain(question, history):
     # Get response using "query" key instead of "question"
     response = qa.invoke({"query": question}).get("result")
 
-    # Stream response and save to memory
-    for char in response:
-        partial_message += char
-        time.sleep(0.005)
-        yield partial_message
+    partial_message = ""
+    if stream:
+        for char in response:
+            partial_message += char
+            time.sleep(0.005)
+            yield partial_message
+    else:
+        yield response  # Return full response immediately
 
     # Save the conversation to memory using "query" as input key
     memory.save_context(
         {"query": question},
-        {"output": partial_message}
+        {"output": partial_message if stream else response}
     )
 
-# Launch Gradio interface
-gr.ChatInterface(rag_chain).launch(server_name='0.0.0.0')
+    # doc = db.create_chat_log(
+    #     user_id=101,
+    #     query_id=1001,
+    #     channel=1,
+    #     user_query="What is the weather?",
+    #     final_input="User asked: What is the weather?",
+    #     final_output="The weather is sunny!",
+    #     reaction=1,
+    #     selected_tools=["weather_api", "stock_price"],
+    #     user_query_timestamp=now,
+    #     final_input_timestamp=now,
+    #     final_output_timestamp=now,
+    #     reaction_timestamp=now,
+    #     selected_tools_timestamp=now
+    # )
+
+if __name__=="__main__":
+    # Launch Gradio interface
+    import gradio as gr
+    gr.ChatInterface(rag_chain).launch(server_name='0.0.0.0')
