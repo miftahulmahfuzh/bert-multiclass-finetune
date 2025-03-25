@@ -22,7 +22,10 @@ import time
 from datetime import datetime
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.memory import ConversationBufferMemory
+from langchain.globals import set_llm_cache
+
 from core.model import llm_ollama
+# from core.model_native import hf
 from core.rag import vectorstore_none
 from tool.tool_caller import process_tools
 from db.arango import PyArangoDB
@@ -40,6 +43,15 @@ db = PyArangoDB(
     password=settings.LOG_DB_PASSWORD.get_secret_value(),
     database=settings.LOG_DB_NAME
 )
+
+# we can utilize caching if we remove history info from prompt
+# because using history will make the prompt unique everytime
+# delete this line in prompt/prompt_v*.py to disable history
+# <|start_header_id|>history<|end_header_id|> {chat_history} <|eot_id|>
+if settings.REDIS_URL:
+    from langchain_redis import RedisCache
+    redis_cache = RedisCache(redis_url=settings.REDIS_URL)
+    set_llm_cache(redis_cache)
 
 def combine_docs(docs):
     return "\n\n".join(doc.metadata['Answer'] for doc in docs)
@@ -74,6 +86,7 @@ def rag_chain(question, stream=True):
     # Set up QA chain with memory
     qa = RetrievalQA.from_chain_type(
         llm=llm_ollama,
+        # llm=hf,
         chain_type="stuff",
         chain_type_kwargs={
             "prompt": processed_prompt,
