@@ -22,13 +22,18 @@ import time
 from datetime import datetime
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.memory import ConversationBufferMemory
-from langchain.globals import set_llm_cache
 
 from core.model import llm_ollama
 # from core.model_native import hf
 from core.rag import vectorstore_none
 from tool.tool_caller import process_tools
 from db.arango import PyArangoDB
+
+import redis
+if settings.REDIS_URL:
+    redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+else:
+    redis_client = None
 
 # Initialize memory
 memory = ConversationBufferMemory(
@@ -43,15 +48,6 @@ db = PyArangoDB(
     password=settings.LOG_DB_PASSWORD.get_secret_value(),
     database=settings.LOG_DB_NAME
 )
-
-# we can utilize caching if we remove history info from prompt
-# because using history will make the prompt unique everytime
-# delete this line in prompt/prompt_v*.py to disable history
-# <|start_header_id|>history<|end_header_id|> {chat_history} <|eot_id|>
-if settings.REDIS_URL:
-    from langchain_redis import RedisCache
-    redis_cache = RedisCache(redis_url=settings.REDIS_URL)
-    set_llm_cache(redis_cache)
 
 def combine_docs(docs):
     return "\n\n".join(doc.metadata['Answer'] for doc in docs)
@@ -76,32 +72,49 @@ def rag_chain(question, stream=True):
         ])
     prev_questions = get_prev_questions(chat_history)
 
-    # Process tools and create partial prompt
-    tools_output, selected_tools, selected_tools_timestamp = process_tools(question, prev_questions)
-    processed_prompt = prompt.partial(
-        tools_output=tools_output,
-        chat_history=formatted_history
-    )
-
-    # Set up QA chain with memory
-    qa = RetrievalQA.from_chain_type(
-        llm=llm_ollama,
-        # llm=hf,
-        chain_type="stuff",
-        chain_type_kwargs={
-            "prompt": processed_prompt,
-            "document_prompt": doc_prompt,
-            "verbose": True
-        },
-        retriever=vectorstore_none.as_retriever(),
-        verbose=True
-    )
 
     print("Timestamp: " + str(datetime.today()))
     partial_message = ""
+    qa = None
+    use_llm = True
 
-    # Get response using "query" key instead of "question"
-    response = qa.invoke({"query": question}).get("result")
+    # Manual Redis caching implementation
+    if redis_client:
+        # Create cache key using last 2 previous questions + current question
+        cache_key = "|".join(prev_questions[-2:] + [question])
+
+        # Check if answer exists in cache
+        cached_response = redis_client.get(cache_key)
+        if cached_response:
+            # If found in cache, use cached response
+            print(f"Use answer from Redis:\n{cached_response}")
+            response = cached_response
+            use_llm = False
+
+    if use_llm:
+        # Process tools and create partial prompt
+        tools_output, selected_tools, selected_tools_timestamp = process_tools(question, prev_questions)
+        processed_prompt = prompt.partial(
+            tools_output=tools_output,
+            chat_history=formatted_history
+        )
+
+        # Set up QA chain with memory
+        qa = RetrievalQA.from_chain_type(
+            llm=llm_ollama,
+            # llm=hf,
+            chain_type="stuff",
+            chain_type_kwargs={
+                "prompt": processed_prompt,
+                "document_prompt": doc_prompt,
+                "verbose": True
+            },
+            retriever=vectorstore_none.as_retriever(),
+            verbose=True
+        )
+
+        response = qa.invoke({"query": question}).get("result")
+        redis_client.setex(cache_key, 86400, response)
 
     partial_message = ""
     if stream:
