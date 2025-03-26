@@ -32,6 +32,8 @@ from db.arango import PyArangoDB
 import redis
 if settings.REDIS_URL:
     redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+    # to clear redis cache storage, run
+    # python -m redis_compose.flush_redis
 else:
     redis_client = None
 
@@ -78,11 +80,13 @@ def rag_chain(question, stream=True):
     qa = None
     use_llm = True
 
+    # Create cache key using last 2 previous questions + current question
+    cache_key = " | ".join(prev_questions[-2:] + [question])
+    cache_key = f"ai_chatbot_conv:{cache_key}"
+
     # Manual Redis caching implementation
     if redis_client:
-        # Create cache key using last 2 previous questions + current question
-        cache_key = "|".join(prev_questions[-2:] + [question])
-
+        print(f"Search cache_key: {cache_key}")
         # Check if answer exists in cache
         cached_response = redis_client.get(cache_key)
         if cached_response:
@@ -114,7 +118,12 @@ def rag_chain(question, stream=True):
         )
 
         response = qa.invoke({"query": question}).get("result")
-        redis_client.setex(cache_key, 86400, response)
+        if redis_client:
+            if all(tool not in settings.SKIP_TOOLS for tool in selected_tools):
+                print(f"Selected tools by LLM: {selected_tools}")
+                print("Insert query and answer to cache")
+                print(f"New cache_key: {cache_key}")
+                redis_client.setex(cache_key, 86400, response)
 
     partial_message = ""
     if stream:

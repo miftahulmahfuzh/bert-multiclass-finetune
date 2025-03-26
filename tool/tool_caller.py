@@ -9,6 +9,7 @@ from langchain_core.tools import tool
 from langgraph.prebuilt import ToolNode
 
 from core.model import llm_ollama
+# from core.model_native import hf
 from tool.tool_faq_rag import faq_rag
 from tool.tool_search_web import search_using_third_party_raw
 from tool.tool_stock_info import historical_lookup, company_profile, shareholder_lookup, subsidiary_lookup, \
@@ -140,27 +141,27 @@ def get_current_time() -> str:
     return time
 
 
-tools = [weather_api, stock_price, get_news, web_query, fahrenheit_to_celsius, frequently_asked, combined_vapfo_summary,
-         combined_bvhl_pricemod, historical_lookup, company_profile, shareholder_lookup, subsidiary_lookup]
-         # news_summary]
+tools = [weather_api, stock_price, web_query, fahrenheit_to_celsius, frequently_asked, combined_vapfo_summary,
+         combined_bvhl_pricemod, historical_lookup, company_profile, shareholder_lookup, subsidiary_lookup,
+         news_summary]
 tool_node = ToolNode(tools)
 llm_with_tools = llm_ollama.bind_tools(tools)
+# llm_with_tools = hf.bind_tools(tools)
 
 tool_mapping = {
     "get_current_time": get_current_time,
     "weather_api": weather_api,
-    "stock_price": stock_price,
-    "get_news": get_news,
     "web_query": web_query,
     "fahrenheit_to_celsius": fahrenheit_to_celsius,
     "frequently_asked": frequently_asked,
-    "combined_vapfo_summary": combined_vapfo_summary,
+    "stock_price": stock_price,
     "combined_bvhl_pricemod": combined_bvhl_pricemod,
+    "combined_vapfo_summary": combined_vapfo_summary,
     "historical_lookup": historical_lookup,
     "company_profile": company_profile,
     "shareholder_lookup": shareholder_lookup,
-    "subsidiary_lookup": subsidiary_lookup
-    # "news_summary": news_summary
+    "subsidiary_lookup": subsidiary_lookup,
+    "news_summary": news_summary
 }
 
 
