@@ -21,6 +21,8 @@ class Config(BaseSettings):
 
     PROMPT_VERSION: str = "v2"
 
+    OPENAI_API_KEY: SecretStr
+
     # caching env
     REDIS_URL: str = "redis://:tuntun123@localhost:6379"
     SKIP_TOOLS: List[str] = ["stock_price", "combined_bvhl_pricemod"]

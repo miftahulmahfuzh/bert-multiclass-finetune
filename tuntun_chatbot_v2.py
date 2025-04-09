@@ -23,11 +23,13 @@ from datetime import datetime
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.memory import ConversationBufferMemory
 
+# from core.model import llm_openai
 from core.model import llm_ollama
 # from core.model_native import hf
 from core.rag import vectorstore_none
 from tool.tool_caller import process_tools
 from db.arango import PyArangoDB
+from utils import remove_tag_content
 
 import redis
 if settings.REDIS_URL:
@@ -79,6 +81,7 @@ def rag_chain(question, stream=True):
     partial_message = ""
     qa = None
     use_llm = True
+    response = ""
 
     # Create cache key using last 2 previous questions + current question
     cache_key = " | ".join(prev_questions[-2:] + [question])
@@ -93,6 +96,7 @@ def rag_chain(question, stream=True):
             # If found in cache, use cached response
             print(f"Use answer from Redis:\n{cached_response}")
             response = cached_response
+            response = remove_tag_content(response)
             use_llm = False
 
     if use_llm:
@@ -105,6 +109,7 @@ def rag_chain(question, stream=True):
 
         # Set up QA chain with memory
         qa = RetrievalQA.from_chain_type(
+            # llm=llm_openai,
             llm=llm_ollama,
             # llm=hf,
             chain_type="stuff",
@@ -118,6 +123,7 @@ def rag_chain(question, stream=True):
         )
 
         response = qa.invoke({"query": question}).get("result")
+        response = remove_tag_content(response)
         if redis_client:
             if all(tool not in settings.SKIP_TOOLS for tool in selected_tools):
                 print(f"Selected tools by LLM: {selected_tools}")
