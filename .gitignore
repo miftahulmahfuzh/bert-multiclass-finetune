@@ -1,12 +1,2 @@
 __pycache__/
-chromadb/
-dataset/
-pythonProject/
-.env
-*.7z
-*.csv
-*.pkl
-*.safetensors
-*.pt
-tokenizer.json
 environments.py
