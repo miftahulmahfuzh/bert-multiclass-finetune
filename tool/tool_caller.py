@@ -8,8 +8,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import tool
 from langgraph.prebuilt import ToolNode
 
-from core.model import llm_ollama
-# from core.model_native import hf
+from core.model import llm
 from tool.tool_faq_rag import faq_rag
 from tool.tool_search_web import search_using_third_party_raw
 from tool.tool_stock_info import historical_lookup, company_profile, shareholder_lookup, subsidiary_lookup, \
@@ -145,8 +144,7 @@ tools = [weather_api, stock_price, web_query, fahrenheit_to_celsius, frequently_
          combined_bvhl_pricemod, historical_lookup, company_profile, shareholder_lookup, subsidiary_lookup,
          news_summary]
 tool_node = ToolNode(tools)
-llm_with_tools = llm_ollama.bind_tools(tools)
-# llm_with_tools = hf.bind_tools(tools)
+llm_with_tools = llm.bind_tools(tools)
 
 tool_mapping = {
     "get_current_time": get_current_time,

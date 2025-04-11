@@ -23,13 +23,13 @@ from datetime import datetime
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.memory import ConversationBufferMemory
 
-# from core.model import llm_openai
-from core.model import llm_ollama
-# from core.model_native import hf
+from core.model import llm
 from core.rag import vectorstore_none
 from tool.tool_caller import process_tools
-from db.arango import PyArangoDB
 from utils import remove_tag_content
+
+from db.arango import PyArangoDB
+from db.utils import get_current_timestamp
 
 import redis
 if settings.REDIS_URL:
@@ -64,6 +64,8 @@ def get_prev_questions(chat_history):
     return prev_questions
 
 def rag_chain(question, stream=True):
+    user_query_timestamp = get_current_timestamp()
+
     # Load previous conversation from memory
     chat_history = memory.load_memory_variables({})["chat_history"]
 
@@ -99,19 +101,36 @@ def rag_chain(question, stream=True):
             response = remove_tag_content(response)
             use_llm = False
 
+    tools_output = ""
+    selected_tools = []
+    now = get_current_timestamp()
+    selected_tools_timestamp = now
+    processed_prompt = prompt.partial(
+        tools_output=tools_output,
+        chat_history=formatted_history
+    )
+    final_processed_prompt = processed_prompt.format(
+        context="",  # Add context if needed
+        question=question
+    )
+    final_input_timestamp = now
     if use_llm:
         # Process tools and create partial prompt
         tools_output, selected_tools, selected_tools_timestamp = process_tools(question, prev_questions)
+
         processed_prompt = prompt.partial(
             tools_output=tools_output,
             chat_history=formatted_history
         )
+        final_processed_prompt = processed_prompt.format(
+            context="",  # Add context if needed
+            question=question
+        )
+        final_input_timestamp = get_current_timestamp()
 
         # Set up QA chain with memory
         qa = RetrievalQA.from_chain_type(
-            # llm=llm_openai,
-            llm=llm_ollama,
-            # llm=hf,
+            llm=llm,
             chain_type="stuff",
             chain_type_kwargs={
                 "prompt": processed_prompt,
@@ -125,7 +144,7 @@ def rag_chain(question, stream=True):
         response = qa.invoke({"query": question}).get("result")
         response = remove_tag_content(response)
         if redis_client:
-            if all(tool not in settings.SKIP_TOOLS for tool in selected_tools):
+            if all(tool not in settings.TIMEBOUND_TOOLS for tool in selected_tools):
                 print(f"Selected tools by LLM: {selected_tools}")
                 print("Insert query and answer to cache")
                 print(f"New cache_key: {cache_key}")
@@ -140,27 +159,31 @@ def rag_chain(question, stream=True):
     else:
         yield response  # Return full response immediately
 
+    final_output_timestamp = get_current_timestamp()
+
     # Save the conversation to memory using "query" as input key
     memory.save_context(
         {"query": question},
         {"output": partial_message if stream else response}
     )
 
-    # doc = db.create_chat_log(
-    #     user_id=101,
-    #     query_id=1001,
-    #     channel=1,
-    #     user_query="What is the weather?",
-    #     final_input="User asked: What is the weather?",
-    #     final_output="The weather is sunny!",
-    #     reaction=1,
-    #     selected_tools=["weather_api", "stock_price"],
-    #     user_query_timestamp=now,
-    #     final_input_timestamp=now,
-    #     final_output_timestamp=now,
-    #     reaction_timestamp=now,
-    #     selected_tools_timestamp=now
-    # )
+    if db.connect():
+        now = get_current_timestamp()
+        doc = db.create_chat_log(
+            user_id=101,
+            query_id=1001,
+            channel=1,
+            user_query=question,
+            final_input=final_processed_prompt,
+            final_output=partial_message if stream else response,
+            reaction=1,
+            selected_tools=selected_tools,
+            user_query_timestamp=user_query_timestamp,
+            final_input_timestamp=final_input_timestamp,
+            final_output_timestamp=final_output_timestamp,
+            reaction_timestamp=now,
+            selected_tools_timestamp=selected_tools_timestamp
+        )
 
 if __name__=="__main__":
     # Launch Gradio interface

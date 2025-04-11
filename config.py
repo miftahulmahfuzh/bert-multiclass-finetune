@@ -3,6 +3,11 @@ from pydantic_settings import BaseSettings
 from pydantic import SecretStr
 from typing import List
 import os
+from enum import Enum
+
+class LLMType(str, Enum):
+    OLLAMA = "OLLAMA"
+    OPENAI = "OPENAI"
 
 class Config(BaseSettings):
 
@@ -20,12 +25,14 @@ class Config(BaseSettings):
     API_PORT: int = 8000
 
     PROMPT_VERSION: str = "v2"
+    LLM_TYPE: LLMType = LLMType.OLLAMA
 
     OPENAI_API_KEY: SecretStr
+    DEEPSEEK_API_KEY: SecretStr
 
     # caching env
     REDIS_URL: str = "redis://:tuntun123@localhost:6379"
-    SKIP_TOOLS: List[str] = ["stock_price", "combined_bvhl_pricemod"]
+    TIMEBOUND_TOOLS: List[str] = ["stock_price", "combined_bvhl_pricemod"]
 
     class Config:
         env_file = ".env"
