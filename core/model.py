@@ -12,8 +12,13 @@ os.environ[
 llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, max_tokens=1000)
 if settings.LLM_TYPE == LLMType.OLLAMA:
     llm = ChatOllama(
-        model="llama3.1:70b-instruct-q5_0",
+        model="llama3.1:70b",
+        # model="llama3.1:70b-instruct-q5_0",
         temperature=0)
+llm_natural_answer_generation = ChatOllama(
+    model="llama3.1:70b",
+    # model="llama3.1:70b-instruct-q5_0",
+    temperature=0)
 
 EMBEDDING_MODEL_NAME = "dunzhang/stella_en_400M_v5"
 embedding_model = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME,

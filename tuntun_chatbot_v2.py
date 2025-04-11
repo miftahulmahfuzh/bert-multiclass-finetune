@@ -23,7 +23,7 @@ from datetime import datetime
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.memory import ConversationBufferMemory
 
-from core.model import llm
+from core.model import llm_natural_answer_generation
 from core.rag import vectorstore_none
 from tool.tool_caller import process_tools
 from utils import remove_tag_content
@@ -130,7 +130,7 @@ def rag_chain(question, stream=True):
 
         # Set up QA chain with memory
         qa = RetrievalQA.from_chain_type(
-            llm=llm,
+            llm=llm_natural_answer_generation,
             chain_type="stuff",
             chain_type_kwargs={
                 "prompt": processed_prompt,
@@ -171,7 +171,6 @@ def rag_chain(question, stream=True):
         now = get_current_timestamp()
         doc = db.create_chat_log(
             user_id=101,
-            query_id=1001,
             channel=1,
             user_query=question,
             final_input=final_processed_prompt,

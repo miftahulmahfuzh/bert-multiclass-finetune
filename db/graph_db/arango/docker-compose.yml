@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  arangodb:
+    image: arangodb:latest
+    environment:
+      - ARANGO_ROOT_PASSWORD=tuntun123  # Replace with a strong password
+    ports:
+      - "8529:8529"  # Exposes ArangoDB's web interface and API
+    volumes:
+      - arangodb_data:/var/lib/arangodb3  # Persistent volume for data
+      - arangodb_apps:/var/lib/arangodb3-apps  # Persistent volume for apps
+    restart: unless-stopped
+
+volumes:
+  arangodb_data:
+    driver: local
+  arangodb_apps:
+    driver: local
