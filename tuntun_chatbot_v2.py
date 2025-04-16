@@ -170,12 +170,11 @@ def rag_chain(question, stream=True):
     if db.connect():
         now = get_current_timestamp()
         doc = db.create_chat_log(
-            user_id=101,
-            channel=1,
+            user_id="101",
             user_query=question,
             final_input=final_processed_prompt,
             final_output=partial_message if stream else response,
-            reaction=1,
+            reaction="none",
             selected_tools=selected_tools,
             user_query_timestamp=user_query_timestamp,
             final_input_timestamp=final_input_timestamp,

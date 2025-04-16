@@ -60,6 +60,7 @@ class PyArangoDB(GraphDB):
         self.connection = None
         self.db = None
         self.counters_collection = "system_counters"  # Collection to store auto-increment counters
+        self.channel_collection = "channel_info"  # Collection to store the last channel from each user
 
     def connect(self) -> bool:
         """
@@ -78,6 +79,9 @@ class PyArangoDB(GraphDB):
 
             # Initialize counters collection if it doesn't exist
             self._init_counters_collection()
+
+            # Initialize channel info collection if it doesn't exist
+            self._init_channel_collection()
 
             return True
         except Exception as e:
@@ -110,6 +114,12 @@ class PyArangoDB(GraphDB):
                 })
                 counter_doc.save()
                 print("Created query_id counter document.")
+
+    def _init_channel_collection(self) -> None:
+        """Initialize the channel info collection if it doesn't exist."""
+        if not self.db.hasCollection(self.channel_collection):
+            collection = self.db.createCollection(name=self.channel_collection)
+            print(f"Created {self.channel_collection} collection.")
 
     def get_next_query_id(self) -> int:
         """
@@ -250,9 +260,94 @@ class PyArangoDB(GraphDB):
             print(f"Error updating document {doc_id}: {e}")
             return None
 
+    def get_channel(self, user_id: int) -> int:
+        """
+        Get the channel for a specific user from channel_info collection.
+
+        Args:
+            user_id: User identifier
+
+        Returns:
+            int: Channel identifier or 0 if not found
+        """
+        if not self.db:
+            raise ConnectionError("Database connection not established. Call connect() first.")
+
+        try:
+            collection = self.get_collection(self.channel_collection)
+            if not collection:
+                collection = self.create_collection(self.channel_collection)
+                print(f"Created {self.channel_collection} collection.")
+                return 0
+
+            # Try to find document with user_id as key
+            user_key = str(user_id)
+            try:
+                doc = collection[user_key]
+                return int(doc["channel"])
+            except KeyError:
+                print(f"No channel found for user_id {user_id}")
+                return 0
+
+        except Exception as e:
+            print(f"Error getting channel for user_id {user_id}: {e}")
+            return 0
+
+    def update_channel(self, user_id: int, channel: int) -> Optional[Document]:
+        """
+        Update or create channel information for a user.
+
+        Args:
+            user_id: User identifier
+            channel: Channel identifier
+
+        Returns:
+            Document object or None if operation failed
+        """
+        result = {"status":"failed", "message":"connection to database has not established"}
+        if not self.db:
+            raise ConnectionError("Database connection not established. Call connect() first.")
+
+        try:
+            collection = self.get_collection(self.channel_collection)
+            if not collection:
+                collection = self.create_collection(self.channel_collection)
+
+            # Use user_id as the document key for unique constraint
+            user_key = str(user_id)
+
+            # Check if the user already exists
+            try:
+                # User exists, update the channel
+                doc = collection[user_key]
+                doc["channel"] = str(channel)
+                doc["updated_at"] = get_current_timestamp()
+                doc.save()
+                message = f"Updated channel to {channel} for user_id {user_id}"
+                result = {"status": "success", "message": message}
+                print(message)
+                return result
+            except Exception as e:
+                # User doesn't exist, create new document
+                doc = collection.createDocument({
+                    "_key": user_key,
+                    "user_id": str(user_id),
+                    "channel": str(channel),
+                    "created_at": get_current_timestamp(),
+                    "updated_at": get_current_timestamp()
+                })
+                doc.save()
+                message = f"Created new channel record for user_id {user_id} with channel {channel}"
+                result = {"status": "success", "message": message}
+                print(message)
+                return result
+
+        except Exception as e:
+            result["message"] = f"Error updating channel for user_id {user_id}: {e}"
+            return result
+
     def create_chat_log(self,
                     user_id: int,
-                    channel: int,
                     user_query: str,
                     final_input: str,
                     final_output: str,
@@ -263,14 +358,15 @@ class PyArangoDB(GraphDB):
                     final_output_timestamp: str,
                     reaction_timestamp: str,
                     selected_tools_timestamp: str,
-                    query_id: Optional[int] = None
+                    query_id: Optional[int] = None,
+                    channel: Optional[int] = None
                 ) -> Optional[Document]:
         """
         Create a chat log document with auto-incrementing query_id if not provided.
+        Get channel from channel_info collection if not provided.
 
         Args:
             user_id: User identifier
-            channel: Channel identifier
             user_query: Original user query
             final_input: Processed input (defaults to user_query if None)
             final_output: System response
@@ -282,6 +378,7 @@ class PyArangoDB(GraphDB):
             reaction_timestamp: the timestamp when user_reaction is received in the system
             selected_tools_timestamp: the timestamp when the chatbot finished selecting_tools
             query_id: Optional query identifier (auto-generated if None)
+            channel: Optional channel identifier (fetched from channel_info if None)
 
         Returns:
             Created document or None if creation failed
@@ -294,14 +391,18 @@ class PyArangoDB(GraphDB):
                 # Fallback to using timestamp as a unique ID
                 query_id = int(user_query_timestamp.replace('.', ''))
 
+        # If channel is not provided, get it from channel_info collection
+        if channel is None:
+            channel = self.get_channel(user_id)
+
         log_data = {
-            "user_id": user_id,
-            "query_id": query_id,
-            "channel": channel,
+            "user_id": str(user_id),
+            "query_id": str(query_id),
+            "channel": str(channel),
             "user_query": user_query,
             "final_input": final_input,
             "final_output": final_output,
-            "reaction": reaction,
+            "reaction": str(reaction),
             "selected_tools": selected_tools,
             "user_query_timestamp": user_query_timestamp,
             "final_input_timestamp": final_input_timestamp,
@@ -312,7 +413,7 @@ class PyArangoDB(GraphDB):
 
         return self.insert_document(settings.LOG_DB_COLLECTION_NAME, log_data)
 
-    def add_reaction(self, doc_id: str, reaction: int) -> Optional[Document]:
+    def add_reaction(self, doc_id: str, reaction: str) -> Optional[Document]:
         """
         Add or update reaction to a chat log.
 
@@ -343,15 +444,21 @@ def main():
     if db.connect():
         print("Connected to ArangoDB successfully")
 
-        # Create a sample chat log with auto-incremented query_id
+        # Example of updating a user's channel
+        db.update_channel(user_id="101", channel="2")
+
+        # Retrieve the channel for a user
+        channel = db.get_channel(user_id="101")
+        print(f"User 101 is using channel {channel}")
+
+        # Create a sample chat log with auto-incremented query_id and channel from channel_info
         now = get_current_timestamp()
         doc = db.create_chat_log(
-            user_id=101,
-            channel=1,
+            user_id="101",
             user_query="What is the weather?",
             final_input="User asked: What is the weather?",
             final_output="The weather is sunny!",
-            reaction=1,
+            reaction="like",
             selected_tools=["weather_api", "stock_price"],
             user_query_timestamp=now,
             final_input_timestamp=now,
@@ -359,29 +466,33 @@ def main():
             reaction_timestamp=now,
             selected_tools_timestamp=now
             # query_id not provided - will be auto-generated
+            # channel not provided - will be fetched from channel_info
         )
 
         if doc:
-            print(f"Created chat log with query_id: {doc['query_id']}")
+            print(f"Created chat log with query_id: {doc['query_id']} and channel: {doc['channel']}")
 
             # Create another log to demonstrate incremental query_id
+            # Update user's channel first
+            db.update_channel(user_id="102", channel="3")
+
             doc2 = db.create_chat_log(
-                user_id=102,
-                channel=1,
+                user_id="102",
                 user_query="What time is it?",
                 final_input="User asked: What time is it?",
                 final_output="The current time is 3:00 PM.",
-                reaction=1,
+                reaction="dislike",
                 selected_tools=["time_api"],
                 user_query_timestamp=now,
                 final_input_timestamp=now,
                 final_output_timestamp=now,
                 reaction_timestamp=now,
                 selected_tools_timestamp=now
+                # Channel will be retrieved from channel_info
             )
 
             if doc2:
-                print(f"Created second chat log with query_id: {doc2['query_id']}")
+                print(f"Created second chat log with query_id: {doc2['query_id']} and channel: {doc2['channel']}")
 
         # Example of updating a document with a reaction
         # updated_doc = db.add_reaction("179154", 0)  # UNLIKE

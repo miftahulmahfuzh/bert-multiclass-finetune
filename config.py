@@ -25,7 +25,7 @@ class Config(BaseSettings):
     API_PORT: int = 8000
 
     PROMPT_VERSION: str = "v2"
-    LLM_TYPE: LLMType = LLMType.OLLAMA
+    LLM_TYPE: LLMType = LLMType.OPENAI
 
     OPENAI_API_KEY: SecretStr
     DEEPSEEK_API_KEY: SecretStr

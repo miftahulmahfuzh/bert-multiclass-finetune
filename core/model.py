@@ -15,12 +15,13 @@ if settings.LLM_TYPE == LLMType.OLLAMA:
         model="llama3.1:70b",
         # model="llama3.1:70b-instruct-q5_0",
         temperature=0)
-llm_natural_answer_generation = ChatOllama(
-    model="llama3.1:70b",
-    # model="llama3.1:70b-instruct-q5_0",
-    temperature=0)
+llm_natural_answer_generation = llm
+# llm_natural_answer_generation = ChatOllama(
+#     model="llama3.1:70b",
+#     # model="llama3.1:70b-instruct-q5_0",
+#     temperature=0)
 
 EMBEDDING_MODEL_NAME = "dunzhang/stella_en_400M_v5"
 embedding_model = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME,
-                                        model_kwargs={'device': 'cuda', 'trust_remote_code': True})
+                                        model_kwargs={'device': 'cpu', 'trust_remote_code': True})
 base_embedding_function = create_langchain_embedding(embedding_model)
