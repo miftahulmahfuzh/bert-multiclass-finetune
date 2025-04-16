@@ -236,7 +236,8 @@ class PyArangoDB(GraphDB):
             collection = self.get_collection(collection_name)
             if not collection:
                 print(f"Collection '{collection_name}' does not exist.")
-                return None
+                # return None
+                return "failed"
 
             # Get the document by its ID
             doc = collection[doc_id]
@@ -251,14 +252,17 @@ class PyArangoDB(GraphDB):
             # Save the updated document
             doc.save()
             print(f"Document {doc_id} updated successfully")
-            return doc
+            # return doc
+            return "success"
 
         except KeyError:
             print(f"Error: Document with ID {doc_id} not found")
-            return None
+            # return None
+            return "failed"
         except Exception as e:
             print(f"Error updating document {doc_id}: {e}")
-            return None
+            # return None
+            return "failed"
 
     def get_channel(self, user_id: int) -> int:
         """
@@ -413,23 +417,75 @@ class PyArangoDB(GraphDB):
 
         return self.insert_document(settings.LOG_DB_COLLECTION_NAME, log_data)
 
-    def add_reaction(self, doc_id: str, reaction: str) -> Optional[Document]:
+    def update_reaction(self, query_id: str, reaction: str, user_id: Optional[str] = None) -> Optional[Document]:
         """
-        Add or update reaction to a chat log.
+        Add or update reaction to a chat log based on query_id.
 
         Args:
-            doc_id: Document ID
+            query_id: Query identifier for the chat log
             reaction: Reaction value (1 for LIKE, 0 for UNLIKE)
+            user_id: Optional user identifier to ensure the correct document is updated
+                (in case multiple documents have the same query_id)
 
         Returns:
             Updated document or None if update failed
         """
-        update_data = {
-            "reaction": reaction,
-            "reaction_timestamp": get_current_timestamp()
-        }
+        result = {"status":"failed", "message":"connection to database has not established"}
+        if not self.db:
+            raise ConnectionError("Database connection not established. Call connect() first.")
 
-        return self.update_document(settings.LOG_DB_COLLECTION_NAME, doc_id, update_data)
+        try:
+            collection = self.get_collection(settings.LOG_DB_COLLECTION_NAME)
+            if not collection:
+                print(f"Collection '{settings.LOG_DB_COLLECTION_NAME}' does not exist.")
+                return None
+
+            # Build the AQL query to find the document by query_id
+            aql_query = "FOR doc IN @@collection FILTER doc.query_id == @query_id"
+
+            # Add user_id filter if provided
+            if user_id:
+                aql_query += " AND doc.user_id == @user_id"
+
+            aql_query += " RETURN doc"
+
+            # Prepare bind variables for the query
+            bind_vars = {
+                "@collection": settings.LOG_DB_COLLECTION_NAME,
+                "query_id": str(query_id)
+            }
+
+            if user_id:
+                bind_vars["user_id"] = str(user_id)
+
+            # Execute the query
+            result = self.db.AQLQuery(aql_query, bindVars=bind_vars, rawResults=True)
+
+            if not result:
+                print(f"No document found with query_id {query_id}")
+                return None
+
+            # Get the first matching document
+            doc_data = result[0]
+            doc_id = doc_data["_key"]
+
+            # Update the document with new reaction data
+            update_data = {
+                "reaction": reaction,
+                "reaction_timestamp": get_current_timestamp()
+            }
+
+            status = self.update_document(settings.LOG_DB_COLLECTION_NAME, doc_id, update_data)
+            if status == "success":
+                message = f"success updating reaction to {reaction} for query_id {query_id}"
+                result = {"status": status, "message": message}
+            else:
+                message = "failed updating reaction for query_id {query_id}"
+            return result
+
+        except Exception as e:
+            print(f"Error updating reaction for query_id {query_id}: {e}")
+            return None
 
 
 def main():
@@ -472,6 +528,12 @@ def main():
         if doc:
             print(f"Created chat log with query_id: {doc['query_id']} and channel: {doc['channel']}")
 
+            # Example of updating a document's reaction using query_id
+            query_id = doc["query_id"]
+            updated_doc = db.update_reaction(query_id=query_id, reaction="0")  # UNLIKE
+            if updated_doc:
+                print(f"Updated reaction for query_id {query_id} to {updated_doc['reaction']}")
+
             # Create another log to demonstrate incremental query_id
             # Update user's channel first
             db.update_channel(user_id="102", channel="3")
@@ -495,7 +557,7 @@ def main():
                 print(f"Created second chat log with query_id: {doc2['query_id']} and channel: {doc2['channel']}")
 
         # Example of updating a document with a reaction
-        # updated_doc = db.add_reaction("179154", 0)  # UNLIKE
+        # updated_doc = db.update_reaction("179154", 0)  # UNLIKE
         # if updated_doc:
         #     print("Updated document:", updated_doc)
     else:
