@@ -1,3 +1,6 @@
+# Postman Documentation
+# https://documenter.getpostman.com/view/4281680/2sB2cbcKXd
+
 from fastapi import FastAPI, HTTPException, Depends, Header, Query
 from tuntun_chatbot_v2 import rag_chain, db
 from config import settings
@@ -16,16 +19,23 @@ def chat(query: str = Query(..., title="User Query")):
 
 @app.get("/update_channel", dependencies=[Depends(verify_api_key)])
 def update_channel(user_id: str, channel: str):
-    result = {"status":"failed", "message":"connection to database has not established"}
+    result = {"status":"failed", "message":"connection to database not established"}
     if db.connect():
         result = db.update_channel(user_id, channel)
     return result
 
 @app.get("/update_reaction", dependencies=[Depends(verify_api_key)])
 def update_reaction(query_id: str, reaction: str):
-    result = {"status":"failed", "message":"connection to database has not established"}
+    result = {"status":"failed", "message":"connection to database not established"}
     if db.connect():
         result = db.update_reaction(query_id, reaction)
+    return result
+
+@app.get("/get_chat_history", dependencies=[Depends(verify_api_key)])
+def get_chat_history(user_id: str):
+    result = {"status":"failed", "message":"connection to database not established"}
+    if db.connect():
+        result = db.get_chat_history(user_id)
     return result
 
 if __name__ == "__main__":

@@ -308,7 +308,7 @@ class PyArangoDB(GraphDB):
         Returns:
             Document object or None if operation failed
         """
-        result = {"status":"failed", "message":"connection to database has not established"}
+        result = {"status":"failed", "message":"connection to database not established"}
         if not self.db:
             raise ConnectionError("Database connection not established. Call connect() first.")
 
@@ -327,7 +327,7 @@ class PyArangoDB(GraphDB):
                 doc["channel"] = str(channel)
                 doc["updated_at"] = get_current_timestamp()
                 doc.save()
-                message = f"Updated channel to {channel} for user_id {user_id}"
+                message = f"Updated channel to '{channel}' for user_id {user_id}"
                 result = {"status": "success", "message": message}
                 print(message)
                 return result
@@ -430,7 +430,7 @@ class PyArangoDB(GraphDB):
         Returns:
             Updated document or None if update failed
         """
-        result = {"status":"failed", "message":"connection to database has not established"}
+        result = {"status":"failed", "message":"connection to database not established"}
         if not self.db:
             raise ConnectionError("Database connection not established. Call connect() first.")
 
@@ -477,7 +477,7 @@ class PyArangoDB(GraphDB):
 
             status = self.update_document(settings.LOG_DB_COLLECTION_NAME, doc_id, update_data)
             if status == "success":
-                message = f"success updating reaction to {reaction} for query_id {query_id}"
+                message = f"Updated reaction to '{reaction}' for query_id {query_id}"
                 result = {"status": status, "message": message}
             else:
                 message = "failed updating reaction for query_id {query_id}"
@@ -486,6 +486,58 @@ class PyArangoDB(GraphDB):
         except Exception as e:
             print(f"Error updating reaction for query_id {query_id}: {e}")
             return None
+
+
+    def get_chat_history(self, user_id: str) -> List[Dict[str, Any]]:
+        """
+        Get chat history for a specific user, sorted from oldest to newest.
+
+        Args:
+            user_id: User identifier
+
+        Returns:
+            List of dictionaries containing chat history information
+        """
+        result = {"status":"failed", "message":"connection to database not established"}
+        if not self.db:
+            raise ConnectionError("Database connection not established. Call connect() first.")
+
+        try:
+            # Build the AQL query to find all documents for the user, sorted by timestamp
+            aql_query = """
+            FOR doc IN @@collection
+            FILTER doc.user_id == @user_id
+            SORT doc.user_query_timestamp ASC
+            RETURN {
+                "query_id": doc.query_id,
+                "user_query": doc.user_query,
+                "final_output": doc.final_output,
+                "reaction": doc.reaction,
+                "user_query_timestamp": doc.user_query_timestamp,
+                "final_output_timestamp": doc.final_output_timestamp
+            }
+            """
+
+            # Prepare bind variables for the query
+            bind_vars = {
+                "@collection": settings.LOG_DB_COLLECTION_NAME,
+                "user_id": str(user_id)
+            }
+
+            # Execute the query
+            query_result = self.db.AQLQuery(aql_query, bindVars=bind_vars, rawResults=True)
+
+            # Convert the result to a list
+            history = list(query_result)
+
+            message = f"Retrieved {len(history)} history records for user_id {user_id}"
+            result = {"status": "success", "message": message, "items": history}
+            return result
+
+        except Exception as e:
+            message = f"Error retrieving chat history for user_id {user_id}: {e}"
+            result = {"status": "failed", "message": message}
+            return result
 
 
 def main():
@@ -530,9 +582,10 @@ def main():
 
             # Example of updating a document's reaction using query_id
             query_id = doc["query_id"]
-            updated_doc = db.update_reaction(query_id=query_id, reaction="0")  # UNLIKE
+            new_reaction = "0"
+            updated_doc = db.update_reaction(query_id=query_id, reaction=new_reaction)  # UNLIKE
             if updated_doc:
-                print(f"Updated reaction for query_id {query_id} to {updated_doc['reaction']}")
+                print(f"Updated reaction for query_id {query_id} to '{new_reaction}'")
 
             # Create another log to demonstrate incremental query_id
             # Update user's channel first
@@ -560,6 +613,14 @@ def main():
         # updated_doc = db.update_reaction("179154", 0)  # UNLIKE
         # if updated_doc:
         #     print("Updated document:", updated_doc)
+
+        # Get updated history
+        print("\nUpdated chat history for user 101:")
+        result = db.get_chat_history(user_id="101")
+        updated_history = result["items"]
+        for index, item in enumerate(updated_history):
+            # print(f"Entry {index+1}: {item['user_query']} - Reaction: {item['reaction']}")
+            print(f"Entry {index+1}: {item['user_query']} - Timestamp: {item['user_query_timestamp']}")
     else:
         print("Failed to connect to ArangoDB")
 

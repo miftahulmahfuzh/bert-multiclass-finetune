@@ -1,5 +1,5 @@
 from chromadb.utils.embedding_functions import create_langchain_embedding
-# from langchain_deepseek import ChatDeepSeek
+from langchain_deepseek import ChatDeepSeek
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -15,6 +15,16 @@ if settings.LLM_TYPE == LLMType.OLLAMA:
         model="llama3.1:70b",
         # model="llama3.1:70b-instruct-q5_0",
         temperature=0)
+elif settings.LLM_TYPE == LLMType.DEEPSEEK:
+    llm_ollama = ChatDeepSeek(
+        model="deepseek-chat",
+        # model="deepseek-reasoner",
+        temperature=0,
+        max_tokens=None,
+        timeout=None,
+        max_retries=2,
+        api_key=settings.DEEPSEEK_API_KEY
+    )
 llm_natural_answer_generation = llm
 # llm_natural_answer_generation = ChatOllama(
 #     model="llama3.1:70b",
@@ -23,5 +33,5 @@ llm_natural_answer_generation = llm
 
 EMBEDDING_MODEL_NAME = "dunzhang/stella_en_400M_v5"
 embedding_model = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME,
-                                        model_kwargs={'device': 'cpu', 'trust_remote_code': True})
+                                        model_kwargs={'device': 'cuda', 'trust_remote_code': True})
 base_embedding_function = create_langchain_embedding(embedding_model)

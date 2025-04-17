@@ -8,6 +8,7 @@ from enum import Enum
 class LLMType(str, Enum):
     OLLAMA = "OLLAMA"
     OPENAI = "OPENAI"
+    DEEPSEEK = "DEEPSEEK"
 
 class Config(BaseSettings):
 
