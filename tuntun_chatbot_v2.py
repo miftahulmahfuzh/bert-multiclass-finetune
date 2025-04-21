@@ -1,5 +1,6 @@
 from langchain_core.prompts import PromptTemplate
 from config import settings
+import json
 
 template = ""
 pv = settings.PROMPT_VERSION.lower()
@@ -133,20 +134,11 @@ def rag_chain(question, user_id="101", stream=True):
                 print(f"New cache_key: {cache_key}")
                 redis_client.setex(cache_key, 86400, response)
 
-    partial_message = ""
-    if stream:
-        for char in response:
-            partial_message += char
-            time.sleep(0.005)
-            yield partial_message
-    else:
-        yield response  # Return full response immediately
-
     final_output_timestamp = get_current_timestamp()
 
     if db.connect():
         now = get_current_timestamp()
-        doc = db.create_chat_log(
+        query_id = db.create_chat_log(
             user_id=user_id,
             user_query=question,
             final_input=final_processed_prompt,
@@ -159,6 +151,9 @@ def rag_chain(question, user_id="101", stream=True):
             reaction_timestamp=now,
             selected_tools_timestamp=selected_tools_timestamp
         )
+    result = {"final_output": response, "query_id": query_id}
+    result_str = json.dumps(result, indent=3)
+    return result_str
 
 if __name__=="__main__":
     # Launch Gradio interface

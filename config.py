@@ -23,7 +23,7 @@ class Config(BaseSettings):
     API_KEY: SecretStr = "ac7c07ad4851146d36ba0af67ad8bfb5f945c694f122a0babb14ff2632b60196"
     API_VERSION: str = "0.1.0"
     API_HOST: str = "0.0.0.0"
-    API_PORT: int = 8001
+    API_PORT: int = 8000
 
     PROMPT_VERSION: str = "v2"
     LLM_TYPE: LLMType = LLMType.OPENAI

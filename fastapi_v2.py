@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException, Depends, Header, Query
 from tuntun_chatbot_v2 import rag_chain, db
 from config import settings
 import uvicorn
+import ast
 
 app = FastAPI()
 
@@ -14,8 +15,9 @@ def verify_api_key(x_api_key: str = Header(...)):
 
 @app.get("/chat", dependencies=[Depends(verify_api_key)])
 def chat(query: str = Query(..., title="User Query"), user_id: str = 101):
-    final_answer = rag_chain(query, user_id, stream=False)
-    return final_answer
+    result_str = rag_chain(query, user_id, stream=False)
+    result = ast.literal_eval(result_str)
+    return result
 
 @app.get("/update_channel", dependencies=[Depends(verify_api_key)])
 def update_channel(user_id: str, channel: str):
