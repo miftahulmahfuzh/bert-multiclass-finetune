@@ -126,13 +126,23 @@ def rag_chain(question, user_id="101", stream=True):
         )
 
         response = qa.invoke({"query": question}).get("result")
-        response = remove_tag_content(response)
+        # response = remove_tag_content(response)
         if redis_client:
             if all(tool not in settings.TIMEBOUND_TOOLS for tool in selected_tools):
                 print(f"Selected tools by LLM: {selected_tools}")
                 print("Insert query and answer to cache")
                 print(f"New cache_key: {cache_key}")
                 redis_client.setex(cache_key, 86400, response)
+
+    # V1 - support stream message
+    # partial_message = ""
+    # if stream:
+    #     for char in response:
+    #         partial_message += char
+    #         time.sleep(0.005)
+    #         yield partial_message
+    # else:
+    #     yield response  # Return full response immediately
 
     final_output_timestamp = get_current_timestamp()
 
@@ -151,6 +161,23 @@ def rag_chain(question, user_id="101", stream=True):
             reaction_timestamp=now,
             selected_tools_timestamp=selected_tools_timestamp
         )
-    result = {"final_output": response, "query_id": query_id}
-    result_str = json.dumps(result, indent=3)
-    return result_str
+
+    # V2 - this is used in gradio_ui.py
+    # result = {"final_output": response, "query_id": query_id}
+    # result_str = json.dumps(result, indent=3)
+    # return result_str
+
+    # V3 - Return the result based on streaming mode. used in gradio_ui_v2.py
+    if stream:
+        # First yield the query_id as a special message
+        first_chunk = json.dumps({"query_id": query_id})
+        yield first_chunk
+
+        # Then yield the content character by character
+        for char in response:
+            time.sleep(0.005)
+            yield char
+    else:
+        # Non-streaming mode - return everything as a single JSON object
+        result = {"final_output": response, "query_id": query_id}
+        return json.dumps(result, indent=3)

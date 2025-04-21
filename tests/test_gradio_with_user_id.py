@@ -7,3 +7,5 @@ result = client.predict(
 		api_name="/predict"
 )
 print(result)
+# for char in result:
+#     yield char
