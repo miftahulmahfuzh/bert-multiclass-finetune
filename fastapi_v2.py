@@ -13,8 +13,8 @@ def verify_api_key(x_api_key: str = Header(...)):
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
 @app.get("/chat", dependencies=[Depends(verify_api_key)])
-def chat(query: str = Query(..., title="User Query")):
-    final_answer = rag_chain(query, stream=False)
+def chat(query: str = Query(..., title="User Query"), user_id: str = 101):
+    final_answer = rag_chain(query, user_id, stream=False)
     return final_answer
 
 @app.get("/update_channel", dependencies=[Depends(verify_api_key)])

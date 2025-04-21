@@ -487,13 +487,14 @@ class PyArangoDB(GraphDB):
             print(f"Error updating reaction for query_id {query_id}: {e}")
             return None
 
-
-    def get_chat_history(self, user_id: str) -> List[Dict[str, Any]]:
+    def get_chat_history(self, user_id: int, n: Optional[int] = None) -> Dict[str, Any]:
         """
         Get chat history for a specific user, sorted from oldest to newest.
+        Optionally limit to the n most recent entries.
 
         Args:
             user_id: User identifier
+            n: Optional limit on number of history items to return (newest n items)
 
         Returns:
             List of dictionaries containing chat history information
@@ -501,15 +502,31 @@ class PyArangoDB(GraphDB):
         result = {"status":"failed", "message":"connection to database not established"}
         if not self.db:
             raise ConnectionError("Database connection not established. Call connect() first.")
+            result = {"status":"failed", "message": msg}
+            return result
 
         try:
             # Build the AQL query to find all documents for the user, sorted by timestamp
             aql_query = """
             FOR doc IN @@collection
             FILTER doc.user_id == @user_id
-            SORT doc.user_query_timestamp ASC
+            """
+
+            # If n is specified, get the newest n items (sort DESC, limit, then sort ASC)
+            if n is not None and n > 0:
+                aql_query += """
+                SORT doc.user_query_timestamp DESC
+                LIMIT @limit
+                SORT doc.user_query_timestamp ASC
+                """
+            else:
+                # Otherwise, simply sort by timestamp (oldest first)
+                aql_query += """
+                SORT doc.user_query_timestamp ASC
+                """
+
+            aql_query += """
             RETURN {
-                "query_id": doc.query_id,
                 "user_query": doc.user_query,
                 "final_output": doc.final_output,
                 "reaction": doc.reaction,
@@ -524,19 +541,26 @@ class PyArangoDB(GraphDB):
                 "user_id": str(user_id)
             }
 
+            # Add limit parameter if n is specified
+            if n is not None and n > 0:
+                bind_vars["limit"] = n
+
             # Execute the query
-            query_result = self.db.AQLQuery(aql_query, bindVars=bind_vars, rawResults=True)
+            result = self.db.AQLQuery(aql_query, bindVars=bind_vars, rawResults=True)
 
             # Convert the result to a list
-            history = list(query_result)
+            history = list(result)
 
-            message = f"Retrieved {len(history)} history records for user_id {user_id}"
-            result = {"status": "success", "message": message, "items": history}
+            msg = f"Retrieved {len(history)} history records for user_id {user_id}"
+            if n is not None and n > 0:
+                msg += f" (limited to {n} entries)"
+            print(msg)
+            result = {"status": "success", "message": msg, "items": history}
             return result
 
         except Exception as e:
-            message = f"Error retrieving chat history for user_id {user_id}: {e}"
-            result = {"status": "failed", "message": message}
+            msg = f"Error retrieving chat history for user_id {user_id}: {e}"
+            result = {"status":"failed", "message": msg}
             return result
 
 
@@ -613,14 +637,6 @@ def main():
         # updated_doc = db.update_reaction("179154", 0)  # UNLIKE
         # if updated_doc:
         #     print("Updated document:", updated_doc)
-
-        # Get updated history
-        print("\nUpdated chat history for user 101:")
-        result = db.get_chat_history(user_id="101")
-        updated_history = result["items"]
-        for index, item in enumerate(updated_history):
-            # print(f"Entry {index+1}: {item['user_query']} - Reaction: {item['reaction']}")
-            print(f"Entry {index+1}: {item['user_query']} - Timestamp: {item['user_query_timestamp']}")
     else:
         print("Failed to connect to ArangoDB")
 

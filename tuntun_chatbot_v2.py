@@ -21,7 +21,6 @@ doc_prompt = PromptTemplate(
 import time
 from datetime import datetime
 from langchain.chains.retrieval_qa.base import RetrievalQA
-from langchain.memory import ConversationBufferMemory
 
 from core.model import llm_natural_answer_generation
 from core.rag import vectorstore_none
@@ -39,13 +38,6 @@ if settings.REDIS_URL:
 else:
     redis_client = None
 
-# Initialize memory
-memory = ConversationBufferMemory(
-    memory_key="chat_history",
-    return_messages=True,
-    input_key="query"  # Changed to match RetrievalQA expected input
-)
-
 db = PyArangoDB(
     url=settings.LOG_DB_URL,
     username=settings.LOG_DB_USERNAME,
@@ -53,31 +45,22 @@ db = PyArangoDB(
     database=settings.LOG_DB_NAME
 )
 
-def combine_docs(docs):
-    return "\n\n".join(doc.metadata['Answer'] for doc in docs)
-
-def get_prev_questions(chat_history):
+def get_formatted_history_from_db(user_id, n):
+    formatted_history = ""
     prev_questions = []
-    for i, msg in enumerate(chat_history):
-        if i % 2 == 0:
-            prev_questions.append(msg.content)
-    return prev_questions
+    if db.connect():
+        result = db.get_chat_history(user_id, n)
+        history = result["items"]
+        formatted_history = "\n".join(f"Human: {x['user_query']}\nAssistant: {x['final_output']}" for x in history)
+        prev_questions = [x["user_query"] for x in history]
+    return formatted_history, prev_questions
 
-def rag_chain(question, stream=True):
+def rag_chain(question, user_id="101", stream=True):
+    print(f"USER_ID: {user_id}")
     user_query_timestamp = get_current_timestamp()
 
-    # Load previous conversation from memory
-    chat_history = memory.load_memory_variables({})["chat_history"]
-
-    # Format chat history for the prompt
-    formatted_history = ""
-    if chat_history:
-        formatted_history = "\n".join([
-            f"Human: {msg.content}" if i % 2 == 0 else f"Assistant: {msg.content}"
-            for i, msg in enumerate(chat_history)
-        ])
-    prev_questions = get_prev_questions(chat_history)
-
+    n = settings.HISTORY_ITEMS
+    formatted_history, prev_questions = get_formatted_history_from_db(user_id, n)
 
     print("Timestamp: " + str(datetime.today()))
     partial_message = ""
@@ -161,16 +144,10 @@ def rag_chain(question, stream=True):
 
     final_output_timestamp = get_current_timestamp()
 
-    # Save the conversation to memory using "query" as input key
-    memory.save_context(
-        {"query": question},
-        {"output": partial_message if stream else response}
-    )
-
     if db.connect():
         now = get_current_timestamp()
         doc = db.create_chat_log(
-            user_id="101",
+            user_id=user_id,
             user_query=question,
             final_input=final_processed_prompt,
             final_output=partial_message if stream else response,
