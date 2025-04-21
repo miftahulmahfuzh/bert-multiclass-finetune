@@ -169,6 +169,7 @@ def rag_chain(question, user_id="101", stream=True):
 
     # V3 - Return the result based on streaming mode. used in gradio_ui_v2.py
     if stream:
+        print(f"STREAM IS SET TO TRUE")
         # First yield the query_id as a special message
         first_chunk = json.dumps({"query_id": query_id})
         yield first_chunk
@@ -178,6 +179,7 @@ def rag_chain(question, user_id="101", stream=True):
             time.sleep(0.005)
             yield char
     else:
+        print(f"STREAM IS SET TO FALSE")
         # Non-streaming mode - return everything as a single JSON object
         result = {"final_output": response, "query_id": query_id}
         return json.dumps(result, indent=3)

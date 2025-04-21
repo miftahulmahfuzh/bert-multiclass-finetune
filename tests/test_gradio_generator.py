@@ -2,36 +2,28 @@ from gradio_client import Client
 
 client = Client("http://10.183.0.2:7861/")
 result = client.predict(
-    message="Hello!!",
+    message="berapa harga saham RAJA?",
     user_id="101",
     api_name="/predict"
 )
-# print(result[:5])
+history = ""
+query_id = "none"
+for chunk in result:
+    print(chunk, end="", flush=True)
 
-# Since result is a generator, iterate through it to get the complete response
-# if isinstance(result, type((_ for _ in ()))):  # Check if it's a generator
-# First item is the query_id JSON
-first_chunk = next(result)
-try:
-    query_id_data = json.loads(first_chunk)
-    query_id = query_id_data.get("query_id")
-    print(f"Query ID: {query_id}")
+    # # Yield the current state to update the UI
+    # yield history
+    # if not query_id and chunk.startswith("{"):
+    #     try:
+    #         data = json.loads(chunk)
+    #         query_id = data.get("query_id")
+    #         continue  # Skip adding this to the visible output
+    #     except json.JSONDecodeError:
+    #         # Not JSON, treat as regular content
+    #         history += chunk
+    # else:
+    #     # Regular content chunk
+    #     history += chunk
 
-    # Collect the rest of the streamed content
-    content = ""
-    for chunk in result:
-        content += chunk
-        # Optionally print each chunk as it arrives
-        # print(chunk, end="", flush=True)
-
-    print("\nFull content:")
-    print(content)
-except json.JSONDecodeError:
-    # If the first chunk isn't JSON, it might be content
-    content = first_chunk
-    for chunk in result:
-        content += chunk
-    print(content)
-# else:
-#     # If not a generator, print as is
-#     print(result)
+# print(f"QUERY_ID: {query_id}")
+# print(f"FINAL_OUTPUT: {history}")
