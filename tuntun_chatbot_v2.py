@@ -154,8 +154,3 @@ def rag_chain(question, user_id="101", stream=True):
     result = {"final_output": response, "query_id": query_id}
     result_str = json.dumps(result, indent=3)
     return result_str
-
-if __name__=="__main__":
-    # Launch Gradio interface
-    import gradio as gr
-    gr.ChatInterface(rag_chain).launch(server_name='0.0.0.0')
