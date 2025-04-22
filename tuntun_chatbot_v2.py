@@ -56,7 +56,8 @@ def get_formatted_history_from_db(user_id, n):
         prev_questions = [x["user_query"] for x in history]
     return formatted_history, prev_questions
 
-def rag_chain(question, user_id="101", stream=True):
+# def rag_chain(question, user_id="101", stream=True):
+def rag_chain(question: str, user_id:str = "101"):
     print(f"USER_ID: {user_id}")
     user_query_timestamp = get_current_timestamp()
 
@@ -133,7 +134,7 @@ def rag_chain(question, user_id="101", stream=True):
                 print("Insert query and answer to cache")
                 print(f"New cache_key: {cache_key}")
                 redis_client.setex(cache_key, 86400, response)
-
+    stream = False
     # V1 - support stream message
     # partial_message = ""
     # if stream:
@@ -168,18 +169,38 @@ def rag_chain(question, user_id="101", stream=True):
     # return result_str
 
     # V3 - Return the result based on streaming mode. used in gradio_ui_v2.py
-    if stream:
-        print(f"STREAM IS SET TO TRUE")
-        # First yield the query_id as a special message
-        first_chunk = json.dumps({"query_id": query_id})
-        yield first_chunk
+    # print(f"STREAM: {stream}")
+    # if stream:
+    #     print(f"STREAM IS SET TO TRUE")
+    #     # First yield the query_id as a special message
+    #     first_chunk = json.dumps({"query_id": query_id})
+    #     yield first_chunk
 
-        # Then yield the content character by character
-        for char in response:
-            time.sleep(0.005)
-            yield char
-    else:
-        print(f"STREAM IS SET TO FALSE")
-        # Non-streaming mode - return everything as a single JSON object
-        result = {"final_output": response, "query_id": query_id}
-        return json.dumps(result, indent=3)
+    #     # Then yield the content character by character
+    #     for char in response:
+    #         time.sleep(0.005)
+    #         yield char
+    # else:
+    #     print(f"STREAM IS SET TO FALSE")
+    #     # Non-streaming mode - return everything as a single JSON object
+    #     result = {"final_output": response, "query_id": query_id}
+    #     return json.dumps(result, indent=3)
+    result = {"final_output": response, "query_id": query_id}
+    return result
+
+def rag_chain_dict(question: str, user_id: str= "101"):
+    return rag_chain(question, user_id)
+
+def rag_chain_stream(question: str, user_id: str= "101"):
+    result = rag_chain(question, user_id)
+    query_id = result["query_id"]
+    response = result["final_output"]
+
+    # First yield the query_id as a special message
+    first_chunk = json.dumps({"query_id": query_id})
+    yield first_chunk
+
+    # Then yield the content character by character
+    for char in response:
+        time.sleep(0.005)
+        yield char

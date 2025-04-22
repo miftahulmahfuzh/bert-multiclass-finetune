@@ -1,4 +1,4 @@
-from tuntun_chatbot_v2 import rag_chain
+from tuntun_chatbot_v2 import rag_chain_dict, rag_chain_stream
 import json
 import time
 import ast
@@ -15,20 +15,25 @@ if __name__ == "__main__":
         # Stream the response chunks
         # for chunk in rag_chain(question=message, user_id=user_id, stream=True):
         #     yield chunk
-        result_str = rag_chain(question=message, user_id=user_id, stream=False)
-        result = ast.literal_eval(result_str)
+        result = rag_chain_dict(question=message, user_id=user_id)
+        # result = ast.literal_eval(result_str)
         query_id = result["query_id"]
         response = result["final_output"]
         print(f"QUERY_ID: {query_id}")
         print(f"RESPONSE: {response}")
+        answer = response
 
-        first_chunk = json.dumps({"query_id": query_id})
-        yield first_chunk
+        # first_chunk = json.dumps({"query_id": query_id})
+        # yield first_chunk
 
-        # Then yield the content character by character
-        for char in response:
-            time.sleep(0.005)
-            yield char
+        # # Then yield the content character by character
+        # answer = ""
+        # for char in response:
+        #     time.sleep(0.005)
+        #     answer += char
+        #     yield char
+
+        return answer
 
 
     # Create the UI with Blocks
@@ -55,7 +60,7 @@ if __name__ == "__main__":
             query_id = None
 
             # Call the rag_chain function with the message and user_id
-            for chunk in rag_chain(question=user_message, user_id=user_id, stream=True):
+            for chunk in rag_chain_stream(question=user_message, user_id=user_id):
                 # If this is the first chunk, it might contain the query_id
                 if not query_id and chunk.startswith("{"):
                     try:
