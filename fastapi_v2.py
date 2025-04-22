@@ -15,7 +15,7 @@ def verify_api_key(x_api_key: str = Header(...)):
 
 @app.get("/chat", dependencies=[Depends(verify_api_key)])
 def chat(query: str = Query(..., title="User Query"), user_id: str = 101):
-    result_str = rag_chain(query, user_id, stream=False)
+    result_str = rag_chain(query, user_id)
     result = ast.literal_eval(result_str)
     return result
 
