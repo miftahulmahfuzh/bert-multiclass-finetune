@@ -1,6 +1,7 @@
 from langchain_core.prompts import PromptTemplate
 from config import settings
 import json
+import re
 
 template = ""
 pv = settings.PROMPT_VERSION.lower()
@@ -26,7 +27,10 @@ from langchain.chains.retrieval_qa.base import RetrievalQA
 from core.model import llm_natural_answer_generation
 from core.rag import vectorstore_none
 from tool.tool_caller import process_tools
-from utils import remove_tag_content
+from utils import (
+    remove_tag_content,
+    extract_xml_content,
+)
 
 from db.arango import PyArangoDB
 from db.utils import get_current_timestamp
@@ -56,9 +60,10 @@ def get_formatted_history_from_db(user_id, n):
         prev_questions = [x["user_query"] for x in history]
     return formatted_history, prev_questions
 
-# def rag_chain(question, user_id="101", stream=True):
-def rag_chain(question: str, user_id:str = "101"):
-    print(f"USER_ID: {user_id}")
+def rag_chain(question: str, user_id:str):
+    if not user_id:
+       user_id = extract_xml_content(question, tag="user_id")
+       question = extract_xml_content(question, tag="query")
     user_query_timestamp = get_current_timestamp()
 
     n = settings.HISTORY_ITEMS
@@ -134,6 +139,7 @@ def rag_chain(question: str, user_id:str = "101"):
                 print("Insert query and answer to cache")
                 print(f"New cache_key: {cache_key}")
                 redis_client.setex(cache_key, 86400, response)
+
     stream = False
     # V1 - support stream message
     # partial_message = ""
@@ -163,10 +169,6 @@ def rag_chain(question: str, user_id:str = "101"):
             selected_tools_timestamp=selected_tools_timestamp
         )
 
-    # V2 - this is used in gradio_ui.py
-    # result = {"final_output": response, "query_id": query_id}
-    # result_str = json.dumps(result, indent=3)
-    # return result_str
 
     # V3 - Return the result based on streaming mode. used in gradio_ui_v2.py
     # print(f"STREAM: {stream}")
@@ -185,8 +187,11 @@ def rag_chain(question: str, user_id:str = "101"):
     #     # Non-streaming mode - return everything as a single JSON object
     #     result = {"final_output": response, "query_id": query_id}
     #     return json.dumps(result, indent=3)
+
+    # v2 - this is used in gradio_ui.py
     result = {"final_output": response, "query_id": query_id}
-    return result
+    result_str = json.dumps(result, indent=3)
+    return result_str
 
 def rag_chain_dict(question: str, user_id: str= "101"):
     return rag_chain(question, user_id)
@@ -204,3 +209,7 @@ def rag_chain_stream(question: str, user_id: str= "101"):
     for char in response:
         time.sleep(0.005)
         yield char
+
+if __name__=="__main__":
+    import gradio as gr
+    gr.ChatInterface(rag_chain).launch(server_name='0.0.0.0')
