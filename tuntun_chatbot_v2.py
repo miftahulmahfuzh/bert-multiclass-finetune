@@ -61,9 +61,10 @@ def get_formatted_history_from_db(user_id, n):
     return formatted_history, prev_questions
 
 def rag_chain(question: str, user_id:str):
-    if not user_id:
-       user_id = extract_xml_content(question, tag="user_id")
-       question = extract_xml_content(question, tag="query")
+    user_id = "101"
+    # if not user_id:
+    #    user_id = extract_xml_content(question, tag="user_id")
+    #    question = extract_xml_content(question, tag="query")
     user_query_timestamp = get_current_timestamp()
 
     n = settings.HISTORY_ITEMS
@@ -171,7 +172,7 @@ def rag_chain(question: str, user_id:str):
 
 
     # V3 - Return the result based on streaming mode. used in gradio_ui_v2.py
-    # print(f"STREAM: {stream}")
+    # stream = True
     # if stream:
     #     print(f"STREAM IS SET TO TRUE")
     #     # First yield the query_id as a special message
@@ -179,9 +180,11 @@ def rag_chain(question: str, user_id:str):
     #     yield first_chunk
 
     #     # Then yield the content character by character
+    #     answer = ""
     #     for char in response:
     #         time.sleep(0.005)
-    #         yield char
+    #         answer += char
+    #         yield answer
     # else:
     #     print(f"STREAM IS SET TO FALSE")
     #     # Non-streaming mode - return everything as a single JSON object
@@ -190,13 +193,14 @@ def rag_chain(question: str, user_id:str):
 
     # v2 - this is used in gradio_ui.py
     result = {"final_output": response, "query_id": query_id}
-    result_str = json.dumps(result, indent=3)
-    return result_str
+    return result
 
 def rag_chain_dict(question: str, user_id: str= "101"):
+    # this is used in gradio_ui_v3 api_chat function
     return rag_chain(question, user_id)
 
 def rag_chain_stream(question: str, user_id: str= "101"):
+    # this is used in gradio_ui_v3 bot function
     result = rag_chain(question, user_id)
     query_id = result["query_id"]
     response = result["final_output"]

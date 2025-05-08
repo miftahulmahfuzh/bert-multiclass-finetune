@@ -31,6 +31,7 @@ class Config(BaseSettings):
 
     OPENAI_API_KEY: SecretStr
     DEEPSEEK_API_KEY: SecretStr
+    HF_ACCESS_TOKEN: SecretStr
 
     # caching env
     REDIS_URL: str = "redis://:tuntun123@localhost:6379"

@@ -1,7 +1,8 @@
 # filename: download_llama3.py
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from config import settings
 
-token = ""
+token = settings.HF_ACCESS_TOKEN.get_secret_value()
 
 # Download the model and tokenizer
 model_name = "atluzz/llama-3-8b-tuntun-en"

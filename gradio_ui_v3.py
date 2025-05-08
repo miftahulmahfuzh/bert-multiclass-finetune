@@ -4,36 +4,30 @@ import time
 import ast
 
 if __name__ == "__main__":
-    # Import gradio
     import gradio as gr
 
     # Define the API endpoint function that will be exposed
     def api_chat(message, user_id="101"):
         """
         This function will be exposed as an API endpoint for streaming responses
+        This function is used in tests.test_gradio_generator_v2
         """
-        # Stream the response chunks
-        # for chunk in rag_chain(question=message, user_id=user_id, stream=True):
-        #     yield chunk
         result = rag_chain_dict(question=message, user_id=user_id)
-        # result = ast.literal_eval(result_str)
         query_id = result["query_id"]
         response = result["final_output"]
-        print(f"QUERY_ID: {query_id}")
+        print(f"IN API_CHAT FUNCTION. QUERY_ID: {query_id}")
         print(f"RESPONSE: {response}")
-        answer = response
 
         # first_chunk = json.dumps({"query_id": query_id})
+        # print(f"Yielding first chunk: {first_chunk}")
         # yield first_chunk
 
-        # # Then yield the content character by character
-        # answer = ""
-        # for char in response:
-        #     time.sleep(0.005)
-        #     answer += char
-        #     yield char
-
-        return answer
+        # Then yield the content character by character
+        answer = ""
+        for char in response:
+            time.sleep(0.005)
+            answer += char
+            yield answer
 
 
     # Create the UI with Blocks
@@ -66,6 +60,7 @@ if __name__ == "__main__":
                     try:
                         data = json.loads(chunk)
                         query_id = data.get("query_id")
+                        print(f"IN BOT FUNCTION. QUERY_ID: {query_id}")
                         continue  # Skip adding this to the visible output
                     except json.JSONDecodeError:
                         # Not JSON, treat as regular content
