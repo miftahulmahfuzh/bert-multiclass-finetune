@@ -7,12 +7,14 @@ if __name__ == "__main__":
     import gradio as gr
 
     # Define the API endpoint function that will be exposed
-    def api_chat(message, user_id="101"):
+    def api_chat(message, user_id, history):
         """
         This function will be exposed as an API endpoint for streaming responses
         This function is used in tests.test_gradio_generator_v2
         """
-        result = rag_chain_dict(question=message, user_id=user_id)
+        # history = json.load(history)
+        history = ast.literal_eval(history)
+        result = rag_chain_dict(question=message, user_id=user_id, history=history)
         query_id = result["query_id"]
         response = result["final_output"]
         print(f"IN API_CHAT FUNCTION. QUERY_ID: {query_id}")
@@ -54,7 +56,7 @@ if __name__ == "__main__":
             query_id = None
 
             # Call the rag_chain function with the message and user_id
-            for chunk in rag_chain_stream(question=user_message, user_id=user_id):
+            for chunk in rag_chain_stream(question=user_message, user_id=user_id, history=None):
                 # If this is the first chunk, it might contain the query_id
                 if not query_id and chunk.startswith("{"):
                     try:
@@ -84,11 +86,15 @@ if __name__ == "__main__":
         clear.click(clear_chat, None, [chatbot, state])
 
     # Create the API endpoint specifically for streaming
+    history_json = "/home/devmiftahul/nlp/repositories/agentic_with_tools/tests/endpoints/json/history.json"
+    # history = json.load(open(history_json))
+    dummy_history = open(history_json).read()
     api = gr.Interface(
         fn=api_chat,
         inputs=[
             gr.Textbox(label="Message"),
-            gr.Textbox(label="User ID", value="101")
+            gr.Textbox(label="User ID", value="101"),
+            gr.Textbox(label="History", value=dummy_history)
         ],
         outputs=gr.Textbox(),
         title="Chat API",

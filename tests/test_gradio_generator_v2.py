@@ -4,12 +4,20 @@ import json
 # Initialize the client
 client = Client("http://10.183.0.2:7862/")
 
+history_dir = "/home/devmiftahul/nlp/faq_chatbot/chatbot_13mar_2025/tests/json"
+history_json = f"{history_dir}/history_stock_price.json"
+# history = json.load(open(history_json))
+history_from_fe = open(history_json).read()
+
 # Connect to the API endpoint with streaming enabled
-result_iterator = client.predict(
-    message="berapa harga saham RAJA?",
-    user_id="102",
-    api_name="/predict"
-)
+# message="berapa harga saham RAJA?"
+message="how about BBCA"
+# result_iterator = client.predict(
+#     message=message,
+#     user_id="102",
+#     history=history,
+#     api_name="/predict"
+# )
 # print(result_iterator)
 
 # # Variables to track the response
@@ -19,8 +27,9 @@ query_id = None
 # Process each chunk as it arrives
 # for chunk in result_iterator:
 for chunk in client.predict(
-    message="berapa harga saham RAJA?",
-    user_id="102",
+    message=message,
+    user_id="104",
+    history=history_from_fe,
     api_name="/predict"
     ):
     # Print the chunk immediately

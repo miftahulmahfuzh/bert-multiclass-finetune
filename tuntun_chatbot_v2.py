@@ -1,4 +1,5 @@
 from langchain_core.prompts import PromptTemplate
+from typing import List, Dict
 from config import settings
 import json
 import re
@@ -50,6 +51,24 @@ db = PyArangoDB(
     database=settings.LOG_DB_NAME
 )
 
+def history_not_empty(history):
+    if isinstance(history, list):
+        if len(history) > 0:
+            item = history[0]
+            if isinstance(item, dict):
+                keys = ["user_query", "final_output"]
+                if all(x in item for x in keys):
+                    return True
+    return False
+
+def get_formatted_history_from_fe(n, history):
+    history = history[:n]
+    formatted_history = ""
+    prev_questions = []
+    formatted_history = "\n".join(f"Human: {x['user_query']}\nAssistant: {x['final_output']}" for x in history)
+    prev_questions = [x["user_query"] for x in history]
+    return formatted_history, prev_questions
+
 def get_formatted_history_from_db(user_id, n):
     formatted_history = ""
     prev_questions = []
@@ -60,7 +79,7 @@ def get_formatted_history_from_db(user_id, n):
         prev_questions = [x["user_query"] for x in history]
     return formatted_history, prev_questions
 
-def rag_chain(question: str, user_id:str):
+def rag_chain(question: str, user_id:str, history:List[Dict]):
     user_id = "101"
     # if not user_id:
     #    user_id = extract_xml_content(question, tag="user_id")
@@ -68,7 +87,13 @@ def rag_chain(question: str, user_id:str):
     user_query_timestamp = get_current_timestamp()
 
     n = settings.HISTORY_ITEMS
-    formatted_history, prev_questions = get_formatted_history_from_db(user_id, n)
+    formatted_history = ""
+    prev_questions = []
+    if history_not_empty(history):
+        print(f"Received history from fe: {json.dumps(history, indent=3)}\n")
+        formatted_history, prev_questions = get_formatted_history_from_fe(n, history)
+    else:
+        formatted_history, prev_questions = get_formatted_history_from_db(user_id, n)
 
     print("Timestamp: " + str(datetime.today()))
     partial_message = ""
@@ -195,13 +220,13 @@ def rag_chain(question: str, user_id:str):
     result = {"final_output": response, "query_id": query_id}
     return result
 
-def rag_chain_dict(question: str, user_id: str= "101"):
+def rag_chain_dict(question: str, user_id: str, history=List[Dict]):
     # this is used in gradio_ui_v3 api_chat function
-    return rag_chain(question, user_id)
+    return rag_chain(question, user_id, history)
 
-def rag_chain_stream(question: str, user_id: str= "101"):
+def rag_chain_stream(question: str, user_id: str, history=List[Dict]):
     # this is used in gradio_ui_v3 bot function
-    result = rag_chain(question, user_id)
+    result = rag_chain(question, user_id, history)
     query_id = result["query_id"]
     response = result["final_output"]
 
