@@ -4,3 +4,4 @@
 tokenizer.json
 __pycache__/
 cache/
+environments.py
