@@ -1,15 +1,17 @@
 import environments
 from fastapi import FastAPI, HTTPException
 from langchain_openai import ChatOpenAI
-from langchain_core.pydantic_v1 import BaseModel as PydanticBaseModel, Field
 from typing import List, Dict
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import asyncio
 import logging
 import time
-import json
 import os
 import tiktoken
+import json
+import redis
+import uuid
+from datetime import datetime
 
 from config import settings
 
@@ -20,23 +22,24 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 # Define model
-model = ChatOpenAI(model="gpt-4.1-nano", temperature=1, max_tokens=32768)
+model = ChatOpenAI(model="gpt-4.1-nano", temperature=0, max_tokens=32768)
 
 # Initialize tokenizer for GPT-4.1 nano (using gpt-4 encoding as a close match)
 tokenizer = tiktoken.encoding_for_model("gpt-4")
+redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 # Constants
 MAX_INPUT_TOKENS = 1_047_576  # GPT-4.1 nano input limit
-# MAX_OUTPUT_TOKENS = 32_768    # GPT-4.1 nano output limit
-MAX_OUTPUT_TOKENS = 15_000    # GPT-4.1 nano output limit
+MAX_OUTPUT_TOKENS = 32_768    # GPT-4.1 nano output limit
 ESTIMATED_TOKENS_PER_COMMENT = 50  # Assume 50 tokens per comment
+BATCH_SIZE = 2  # Number of posts per batch, adjustable
 
 # Structured output schema
-class Comment(PydanticBaseModel):
+class Comment(BaseModel):
     post_index: int = Field(description="The index of the post (1-based) this comment corresponds to")
     comment: str = Field(description="The generated comment for the post")
 
-class CommentsResponse(PydanticBaseModel):
+class CommentsResponse(BaseModel):
     comments: List[Comment] = Field(description="List of comments, one for each input post")
 
 # Create structured LLM
@@ -45,13 +48,13 @@ structured_llm = model.with_structured_output(CommentsResponse)
 def add_system_prompt(posts: List[str]) -> List[Dict]:
     """Create a single system prompt and user message for multiple posts."""
     system_str = open(settings.SYSTEM_PROMPT_PATH).read()
-    # Construct a user message that lists all posts with instructions
     user_content = (
-        "Below is a list of posts. Generate exactly one comment for each post. "
+        f"Below is a list of {len(posts)} posts. Generate exactly one comment for each post. "
         "Each comment should be concise and relevant to the post content. "
         "Return the comments as a structured list, where each entry contains the post index (1-based) and the comment text.\n\n"
         "Posts:\n"
     )
+    print(f"\nUSER_CONTENT PROMPT: {user_content}\n")
     for i, post in enumerate(posts, 1):
         user_content += f"{i}. {post}\n"
 
@@ -76,7 +79,6 @@ def estimate_max_posts(posts: List[str], system_messages: List[Dict]) -> int:
     posts_count = 0
 
     for post in posts:
-        # Count tokens for the post as it appears in the user message
         post_line = f"{posts_count + 1}. {post}\n"
         post_tokens = len(tokenizer.encode(post_line))
         if base_tokens + post_tokens > remaining_input_tokens:
@@ -96,6 +98,36 @@ class QueryResponse(BaseModel):
     number_of_processed_posts: int
     outputs: List[str]
 
+async def process_batch(batch_id: str, posts: List[str], worker_pid: int) -> List[str]:
+    """Process a batch of posts and return comments."""
+    logger.info(f"Worker PID {worker_pid} processing batch {batch_id} with {len(posts)} posts")
+    messages = add_system_prompt(posts)
+    try:
+        response = await structured_llm.ainvoke(messages)
+        # Write response to a unique file
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file = f"json/output_{timestamp}_{worker_pid}_{batch_id}.json"
+        try:
+            os.makedirs("json", exist_ok=True)
+            with open(output_file, "w") as f:
+                json.dump(response.dict(), f, indent=2)
+        except Exception as e:
+            logger.error(f"Worker PID {worker_pid} failed to write to {output_file}: {str(e)}")
+
+        comments = response.comments
+        if len(comments) != len(posts):
+            logger.warning(
+                f"Worker PID {worker_pid} batch {batch_id}: Mismatch in comment count: "
+                f"expected {len(posts)} comments, received {len(comments)}"
+            )
+        sorted_comments = sorted(comments, key=lambda x: x.post_index)
+        if not all(c.post_index == i + 1 for i, c in enumerate(sorted_comments)):
+            raise ValueError(f"Worker PID {worker_pid} batch {batch_id}: Invalid or missing post indices")
+        return [c.comment for c in sorted_comments]
+    except Exception as e:
+        logger.error(f"Worker PID {worker_pid} batch {batch_id} failed: {str(e)}")
+        raise
+
 @app.post("/mcp_chat", response_model=QueryResponse)
 async def process_query(request: QueryRequest):
     start_time = time.time()
@@ -105,64 +137,45 @@ async def process_query(request: QueryRequest):
     if not request.inputs:
         raise HTTPException(status_code=400, detail="Input list cannot be empty")
 
-    # Create base system messages (without posts)
-    base_messages = add_system_prompt([])
+    # Split posts into batches
+    batches = [request.inputs[i:i + BATCH_SIZE] for i in range(0, len(request.inputs), BATCH_SIZE)]
+    queue_name = f"post_batches_{uuid.uuid4()}"
+    for batch_idx, batch_posts in enumerate(batches):
+        # Estimate max posts for this batch
+        base_messages = add_system_prompt([])
+        max_posts = estimate_max_posts(batch_posts, base_messages)
+        batch_posts = batch_posts[:max_posts]
+        if max_posts == 0:
+            logger.warning(f"Batch {batch_idx} skipped: Input exceeds token limits")
+            continue
+        # Push batch to Redis queue
+        batch_id = f"batch_{batch_idx}"
+        redis_client.rpush(queue_name, json.dumps({"batch_id": batch_id, "posts": batch_posts}))
 
-    # Estimate how many posts can be processed
-    max_posts = estimate_max_posts(request.inputs, base_messages)
-    if max_posts == 0:
-        raise HTTPException(status_code=400, detail="Input exceeds token limits")
-
-    # Take only the processable posts
-    posts_to_process = request.inputs[:max_posts]
-    logger.info(f"Processing {max_posts} out of {len(request.inputs)} posts")
-
-    # Create messages with the selected posts
-    messages = add_system_prompt(posts_to_process)
-
-    try:
-        # Call the structured LLM once
-        response = await structured_llm.ainvoke(messages)
-        # Write response to json/output.json
+    # Workers process batches from the queue
+    all_comments = []
+    while redis_client.llen(queue_name) > 0:
+        # Pop a batch from the queue (atomic operation)
+        batch_data = redis_client.lpop(queue_name)
+        if not batch_data:
+            continue
+        batch = json.loads(batch_data)
+        batch_id = batch["batch_id"]
+        batch_posts = batch["posts"]
+        # Process the batch
         try:
-            os.makedirs("json", exist_ok=True)
-            with open("json/output.json", "w") as f:
-                json.dump(response.dict(), f, indent=3)
+            comments = await process_batch(batch_id, batch_posts, process_id)
+            all_comments.extend(comments)
         except Exception as e:
-            logger.error(f"Failed to write response to json/output.json: {str(e)}")
-            # Continue despite file writing error to ensure API response is returned
-
-        comments = response.comments
-        if len(comments) != len(posts_to_process):
-            logger.warning(
-                f"Mismatch in comment count: expected {len(posts_to_process)} comments, "
-                f"received {len(comments)}"
-            )
-        # Ensure comments are in the correct order and extract comment text
-        sorted_comments = sorted(comments, key=lambda x: x.post_index)
-        if not all(c.post_index == i + 1 for i, c in enumerate(sorted_comments)):
-            raise ValueError("Invalid or missing post indices in response")
-        comment_texts = [c.comment for c in sorted_comments]
-        comment_texts = comment_texts[:len(posts_to_process)]
-
-        # if len(comments) != len(posts_to_process):
-        #     raise ValueError("Mismatch between number of comments and posts")
-        # # Ensure comments are in the correct order and extract comment text
-        # sorted_comments = sorted(comments, key=lambda x: x.post_index)
-        # if not all(c.post_index == i + 1 for i, c in enumerate(sorted_comments)):
-        #     raise ValueError("Invalid or missing post indices in response")
-        # comment_texts = [c.comment for c in sorted_comments]
-    except Exception as e:
-        logger.error(f"Error in worker PID {process_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Model invocation failed: {str(e)}")
+            logger.error(f"Worker PID {process_id} failed to process batch {batch_id}: {str(e)}")
+            continue
 
     end_time = time.time()
     logger.info(f"Query completed in worker PID {process_id} in {end_time - start_time:.2f} seconds")
 
     return QueryResponse(
-        # number_of_processed_posts=len(posts_to_process),
-        number_of_processed_posts=len(comments),
-        outputs=comment_texts
+        number_of_processed_posts=len(all_comments),
+        outputs=all_comments
     )
 
 @app.on_event("startup")
@@ -172,3 +185,4 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info(f"Worker PID {os.getpid()} shutting down")
+    redis_client.close()
